@@ -50,6 +50,7 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 
 - **Host:** Vercel Hobby, deployed as a normal Next.js app (not a static export), with a preview deployment for every PR.
 - **URL:** a free Vercel subdomain, `rn-watch-connect.vercel.app` if available. No custom domain.
+- **When:** deploying is the last step, after the content, the AI-output review and the home page animation. Until then, everything is checked locally.
 - **Repo:** a separate public GitHub repo, `CRIIPI11/rn-watch-connect-docs`, in this folder. Base branch `master`; one branch per piece of work, with PRs into `master`.
 - **Repo guide:** an `AGENTS.md` that points to the library's sources and glossary, and states "public API only" and "use glossary terms".
 - **Outward-facing steps need the user's go-ahead first:** creating the GitHub repo, pushing, and creating or linking the Vercel project.
