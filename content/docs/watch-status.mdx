@@ -4,3 +4,200 @@ description: "Check whether a Watch is paired, has your Watch app installed, and
 entries: "isWatchSupported, isWatchPaired, isWatchAppInstalled, isWatchReachable, watchActivationState, onReachabilityChanged, onWatchPairedChanged, onWatchAppInstallChanged"
 ---
 
+These properties tell you what the Session can do right now. Each read returns the current value, and they never throw.
+
+| Property | Type | `true` when |
+| --- | --- | --- |
+| [`isWatchSupported`](#iswatchsupported) | `boolean` | This iPhone supports WatchConnectivity. |
+| [`isWatchPaired`](#iswatchpaired) | `boolean` | An Apple Watch is paired with this iPhone. |
+| [`isWatchAppInstalled`](#iswatchappinstalled) | `boolean` | Your Watch app is installed on the paired Watch. |
+| [`isWatchReachable`](#iswatchreachable) | `boolean` | Your Watch app can receive a Message right now. |
+| [`watchActivationState`](#watchactivationstate) | `WatchActivationState` | (A string, not a boolean.) Whether the Session is ready to carry data. |
+
+Three of them have an event that fires when the value changes: [`onReachabilityChanged`](#onreachabilitychanged), [`onWatchPairedChanged`](#onwatchpairedchanged) and [`onWatchAppInstallChanged`](#onwatchappinstallchanged).
+
+<Callout title="Events fire only on a real change">
+  A new listener isn't called with the current value. Read the property for the starting value, then
+  listen for changes. With `useEvent`, pass the property as the initial value:
+
+```tsx twoslash
+import { useEvent } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function ReachabilityBadge() {
+  const { isWatchReachable } = useEvent(RnWatchConnect, "onReachabilityChanged", {
+    isWatchReachable: RnWatchConnect.isWatchReachable,
+  });
+  return isWatchReachable ? "Watch reachable" : "Watch not reachable";
+}
+```
+
+</Callout>
+
+## `isWatchSupported`
+
+```ts
+readonly isWatchSupported: boolean
+```
+
+`true` when this iPhone supports WatchConnectivity. It's `false` on an iPad, and on platforms other than iOS. Check it before showing any Watch features.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+if (!RnWatchConnect.isWatchSupported) {
+  // Hide your Watch features.
+}
+```
+
+## `isWatchPaired`
+
+```ts
+readonly isWatchPaired: boolean
+```
+
+`true` when an Apple Watch is paired with this iPhone. Listen to [`onWatchPairedChanged`](#onwatchpairedchanged) for changes. It's `false` on platforms other than iOS.
+
+## `isWatchAppInstalled`
+
+```ts
+readonly isWatchAppInstalled: boolean
+```
+
+`true` when your Watch app is installed on the paired Watch. Listen to [`onWatchAppInstallChanged`](#onwatchappinstallchanged) for changes. It's `false` on platforms other than iOS.
+
+## `isWatchReachable`
+
+```ts
+readonly isWatchReachable: boolean
+```
+
+`true` when your Watch app can receive a Message right now, because it's running and in range. Only [Messages](/docs/messages) and [Data Messages](/docs/data-messages) need it: sending one while it's `false` fails with `ERR_WATCH_NOT_REACHABLE`. [Application Context](/docs/application-context), [User Info](/docs/user-info) and [File Transfers](/docs/file-transfer) are delivered later instead. Listen to [`onReachabilityChanged`](#onreachabilitychanged) for changes. It's `false` on platforms other than iOS.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+if (RnWatchConnect.isWatchReachable) {
+  await RnWatchConnect.sendMessageWithoutReply({ refresh: true });
+} else {
+  RnWatchConnect.transferUserInfo({ refresh: true });
+}
+```
+
+## `watchActivationState`
+
+```ts
+readonly watchActivationState: WatchActivationState
+// "notActivated" | "inactive" | "activated" | "unknown"
+```
+
+Whether the Session is ready to carry data.
+
+| Value | Meaning |
+| --- | --- |
+| `"activated"` | The Session is ready. |
+| `"inactive"` | The Session is finishing up, for example while the iPhone switches to another Watch. |
+| `"notActivated"` | The Session isn't activated yet. |
+| `"unknown"` | WatchConnectivity isn't supported: on an iPhone without it, and on platforms other than iOS. |
+
+The Session activates when the library loads. **There's no event for a failed activation**: if `watchActivationState` still isn't `"activated"` shortly after launch, activation failed.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+setTimeout(() => {
+  if (RnWatchConnect.watchActivationState !== "activated") {
+    console.warn("The Session didn't activate:", RnWatchConnect.watchActivationState);
+  }
+}, 2000);
+```
+
+## `onReachabilityChanged`
+
+```ts
+onReachabilityChanged: (event: { isWatchReachable: boolean }) => void
+```
+
+Fires when [`isWatchReachable`](#iswatchreachable) changes. It fires only on a real change, so read the property for the starting value.
+
+**Event**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `isWatchReachable` | `boolean` | The new value of `isWatchReachable`. |
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function ReachabilityLogger() {
+  useEventListener(RnWatchConnect, "onReachabilityChanged", ({ isWatchReachable }) => {
+    console.log("Watch reachable:", isWatchReachable);
+  });
+  return null;
+}
+```
+
+## `onWatchPairedChanged`
+
+```ts
+onWatchPairedChanged: (event: { isWatchPaired: boolean }) => void
+```
+
+Fires when [`isWatchPaired`](#iswatchpaired) changes. It fires only on a real change, so read the property for the starting value.
+
+**Event**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `isWatchPaired` | `boolean` | The new value of `isWatchPaired`. |
+
+**Example**
+
+```tsx twoslash
+import { useEvent } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function PairedStatus() {
+  const { isWatchPaired } = useEvent(RnWatchConnect, "onWatchPairedChanged", {
+    isWatchPaired: RnWatchConnect.isWatchPaired,
+  });
+  return isWatchPaired ? "Watch paired" : "No Watch paired";
+}
+```
+
+## `onWatchAppInstallChanged`
+
+```ts
+onWatchAppInstallChanged: (event: { isWatchAppInstalled: boolean }) => void
+```
+
+Fires when [`isWatchAppInstalled`](#iswatchappinstalled) changes. It fires only on a real change, so read the property for the starting value.
+
+**Event**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `isWatchAppInstalled` | `boolean` | The new value of `isWatchAppInstalled`. |
+
+**Example**
+
+```tsx twoslash
+import { useEvent } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function WatchAppStatus() {
+  const { isWatchAppInstalled } = useEvent(RnWatchConnect, "onWatchAppInstallChanged", {
+    isWatchAppInstalled: RnWatchConnect.isWatchAppInstalled,
+  });
+  return isWatchAppInstalled ? "Watch app installed" : "Install the Watch app";
+}
+```
