@@ -1,15 +1,9 @@
 ---
 title: rn-watch-connect
-description: Talk to a companion watchOS app from your Expo or React Native app.
+description: Communicate with your companion watchOS app from your Expo and React Native app.
 ---
 
-Talk to a companion watchOS app from your Expo or React Native app. `rn-watch-connect` wraps Apple's [WatchConnectivity](https://developer.apple.com/documentation/watchconnectivity) for the iPhone side: send Messages, share data, transfer files, and follow the Watch's status.
-
-It doesn't build the Watch app itself. That's a separate watchOS app, written in Swift or SwiftUI, that uses WatchConnectivity too.
-
-<Callout title="Upgrading from 1.x?">
-  See [Migrating from 1.x to 2.0](/docs/migration) for what your app must change.
-</Callout>
+rn-watch-connect is a library for communicating with your companion watchOS app from your Expo and React Native app. It's built for Expo, with the Expo Modules API, on top of Apple's [WatchConnectivity](https://developer.apple.com/documentation/watchconnectivity).
 
 ## Requirements
 
@@ -56,12 +50,12 @@ export function WatchPing() {
 
 When something fails, the error has a stable `code`, such as `ERR_WATCH_NOT_REACHABLE`. Match on it, never on `message`. See [Error codes](/docs/errors).
 
-## What you can do
+## Why rn-watch-connect
 
-- **[Watch status](/docs/watch-status):** check whether a Watch is paired, your Watch app is installed, and the Watch is reachable, and get told when that changes.
-- **[Messages](/docs/messages):** send dictionaries for immediate delivery, with or without a Reply, and answer the Watch's Messages.
-- **[Data Messages](/docs/data-messages):** the same, with raw bytes as base64.
-- **[Application Context](/docs/application-context):** send your latest values in the background. Only the most recent is delivered.
-- **[User Info](/docs/user-info):** queue dictionaries in the background. Every one is delivered, in order.
-- **[File Transfer](/docs/file-transfer):** send files in the background, and receive the files the Watch sends.
-- **TypeScript:** every method and event is typed, and Messages take generic types for what you send and the Reply you expect.
+- **Built for Expo.** Written with the Expo Modules API for Expo SDK 57. Listen to events with Expo's own `useEvent` and `useEventListener`. See [Watch status](/docs/watch-status).
+- **Promise-based.** `await sendMessage(...)` resolves with the Watch's Reply, and rejects when it fails. See [Messages](/docs/messages).
+- **Reply in one call.** An incoming Message that asks for a Reply comes with its own `reply()` function, and the first reply wins. See [`onMessageWithReply`](/docs/messages#onmessagewithreply).
+- **Errors you can switch on.** Every failure has a stable `code`, such as `ERR_WATCH_NOT_REACHABLE`, typed as `WatchConnectErrorCode`, including WatchConnectivity's own errors. See [Error codes](/docs/errors).
+- **Transfers with a clear ending.** Each [User Info](/docs/user-info) and [File Transfer](/docs/file-transfer) gets exactly one finish event: delivered, failed or cancelled. Both can be listed and cancelled.
+- **Received files handled safely.** Files from the Watch land in your temporary directory, never overwrite each other, and a file that couldn't be kept is reported instead of lost silently. See [`onFileReceived`](/docs/file-transfer#onfilereceived).
+- **Status you can read right away.** `isWatchReachable`, `isWatchPaired` and the other status values are plain properties, and their events fire only on a real change. See [Watch status](/docs/watch-status).

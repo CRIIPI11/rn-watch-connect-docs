@@ -12,7 +12,7 @@ export default function HomePage() {
   const MDX = home.body;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-12">
+    <main className="mx-auto w-full max-w-5xl px-4 py-12">
       <h1 className="text-3xl font-bold mb-4">{home.title}</h1>
       <article className="prose">
         <MDX components={getMDXComponents()} />
