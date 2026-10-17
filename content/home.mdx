@@ -3,4 +3,65 @@ title: rn-watch-connect
 description: Talk to a companion watchOS app from your Expo or React Native app.
 ---
 
-Talk to a companion watchOS app from your Expo or React Native app.
+Talk to a companion watchOS app from your Expo or React Native app. `rn-watch-connect` wraps Apple's [WatchConnectivity](https://developer.apple.com/documentation/watchconnectivity) for the iPhone side: send Messages, share data, transfer files, and follow the Watch's status.
+
+It doesn't build the Watch app itself. That's a separate watchOS app, written in Swift or SwiftUI, that uses WatchConnectivity too.
+
+<Callout title="Upgrading from 1.x?">
+  See [Migrating from 1.x to 2.0](/docs/migration) for what your app must change.
+</Callout>
+
+## Requirements
+
+- **Expo SDK 57 or later** (React Native 0.86+)
+- **iOS 16.4 or later**
+- **A companion watchOS app** to talk to
+
+The library is **iOS only**. On other platforms, its methods fail with `ERR_UNSUPPORTED_PLATFORM` and `watchActivationState` is `"unknown"`.
+
+<Callout title="On an older Expo SDK, or supporting iOS 15?">
+  Stay on `rn-watch-connect@1.x`. Its docs are in the [1.2.0 README](https://github.com/CRIIPI11/rn-watch-connect/blob/v1.2.0/README.md).
+</Callout>
+
+## Installation
+
+```bash
+npm install rn-watch-connect
+```
+
+The library has native code, so **rebuild the native app** after installing or upgrading it, for example with `npx expo run:ios` or a new development build. A JS reload isn't enough, and it doesn't run in Expo Go.
+
+## Quick start
+
+Send a Message when the Watch is reachable, and listen for Messages from it:
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function WatchPing() {
+  useEventListener(RnWatchConnect, "onMessageReceived", (message) => {
+    console.log("From the Watch:", message);
+  });
+
+  async function ping() {
+    if (!RnWatchConnect.isWatchReachable) return;
+    const reply = await RnWatchConnect.sendMessage({ ping: Date.now() });
+    console.log("Reply:", reply);
+  }
+
+  return null; // Call ping() from a button.
+}
+```
+
+When something fails, the error has a stable `code`, such as `ERR_WATCH_NOT_REACHABLE`. Match on it, never on `message`. See [Error codes](/docs/errors).
+
+## What you can do
+
+- **[Watch status](/docs/watch-status):** check whether a Watch is paired, your Watch app is installed, and the Watch is reachable, and get told when that changes.
+- **[Messages](/docs/messages):** send dictionaries for immediate delivery, with or without a Reply, and answer the Watch's Messages.
+- **[Data Messages](/docs/data-messages):** the same, with raw bytes as base64.
+- **[Application Context](/docs/application-context):** send your latest values in the background. Only the most recent is delivered.
+- **[User Info](/docs/user-info):** queue dictionaries in the background. Every one is delivered, in order.
+- **[File Transfer](/docs/file-transfer):** send files in the background, and receive the files the Watch sends.
+- **TypeScript:** every method and event is typed, and Messages take generic types for what you send and the Reply you expect.

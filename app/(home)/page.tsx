@@ -1,5 +1,11 @@
 import { getHome } from '@/lib/source';
 import { getMDXComponents } from '@/components/mdx';
+import type { Metadata } from 'next';
+
+export function generateMetadata(): Metadata {
+  const home = getHome();
+  return { title: { absolute: home.title }, description: home.description };
+}
 
 export default function HomePage() {
   const home = getHome();

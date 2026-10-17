@@ -5,7 +5,7 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 ## Content
 
 - **Scope:** the public API of `rn-watch-connect@2.x` (every property, method and event), plus the home page and the Migration page. No internals.
-- **Versions:** 2.x only, no versioned docs. Users on Expo SDK < 57 or iOS 15 are pointed to the 1.x README (git tag `v1.x` in the library repo).
+- **Versions:** 2.x only, no versioned docs. Users on Expo SDK < 57 or iOS 15 are pointed to the 1.x README (git tag `v1.2.0`, the last 1.x release).
 - **Home page (`/`):** a custom React page holding:
   - a quick installation guide: requirements (Expo SDK 57+ / React Native 0.86+, iOS 16.4+, a companion watchOS app), the install command, "rebuild the native app; a JS reload isn't enough", and a short quick-start;
   - a library overview. **Still open:** the user hasn't decided what it says or how it's presented. Until then, use the README "Features" list as placeholder text;
