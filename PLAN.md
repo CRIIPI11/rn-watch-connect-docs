@@ -21,6 +21,8 @@ Implements `DECISIONS.md`. Each step is one branch and one PR into `master`, unl
 
 ## 3. `llms` output
 
+> Done together with step 2, because the skeleton's stubs were needed to check it.
+
 - Turn on Fumadocs' `llms()` integration (`includeProcessedMarkdown`).
 - `/llms.txt`: the text of `home.mdx`, then the generated index.
 - `/llms-full.txt`: the text of `home.mdx`, then every page, Migration last.
