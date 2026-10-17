@@ -35,6 +35,7 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 - **`/llms.txt`:** the home text (including the key rules: iOS only, match on `code`, rebuild after install), then one line per page. Each page's frontmatter `description` names the entries on it, e.g. `- [File Transfer](…/docs/file-transfer.md): transferFile, cancelFileTransfer, …`.
 - **`/llms-full.txt`:** the home text, then every page in full, Migration last.
 - **Per-page Markdown:** at `/docs/<page>.md`.
+- Both files follow the sidebar order (`content/docs/meta.json`). Twoslash markup (the `twoslash` code-block flag, `// ^?` lines) is stripped, so agents get plain code.
 - Everything is generated from the pages. No hand-written copies.
 
 ## Tech

@@ -1,7 +1,7 @@
 import { llms, loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
-import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
-import { defineDocs } from 'fumadocs-mdx/macro';
+import { docsRoute } from './shared';
+import { defineCollections, defineDocs } from 'fumadocs-mdx/macro';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
 
 const docs = defineDocs({
@@ -17,6 +17,23 @@ const docs = defineDocs({
   },
 });
 
+// The home page's text: rendered on `/`, and put at the top of llms.txt and llms-full.txt.
+const homeCollection = defineCollections({
+  type: 'doc',
+  dir: 'content',
+  files: ['home.mdx'],
+  schema: pageSchema,
+  postprocess: {
+    includeProcessedMarkdown: true,
+  },
+});
+
+export function getHome() {
+  const home = homeCollection.get('home.mdx');
+  if (!home) throw new Error('content/home.mdx is missing');
+  return home;
+}
+
 // See https://fumadocs.dev/docs/headless/source-api for more info
 export const source = loader({
   baseUrl: docsRoute,
@@ -24,8 +41,55 @@ export const source = loader({
   plugins: [lucideIconsPlugin()],
 });
 
+// Twoslash markup is for the type-checker and hover popups. Agents only need the plain code.
+function stripTwoslash(markdown: string) {
+  return markdown
+    .replace(/^(```\w+)[^\n]*\btwoslash\b[^\n]*$/gm, '$1')
+    .replace(/^[ \t]*\/\/[ \t]*(\^[?|~^]+|@\w+.*|---(cut|cut-after|cut-start|cut-end)---)[ \t]*\n/gm, '');
+}
+
 export const docsLlms = llms(source, {
   renderPage: async (page) => `# ${page.data.title} (${page.url})
 
-${await page.data.getText('processed')}`,
+${stripTwoslash(await page.data.getText('processed'))}`,
 });
+
+type PageTreeNode = ReturnType<typeof source.getPageTree>['children'][number];
+
+// The pages in sidebar order (meta.json), so llms output reads like the site.
+function pagesInNavOrder(nodes: PageTreeNode[] = source.getPageTree().children) {
+  const out: { separator?: string; page?: NonNullable<ReturnType<typeof source.getNodePage>> }[] = [];
+  for (const node of nodes) {
+    if (node.type === 'separator') out.push({ separator: String(node.name ?? '') });
+    else if (node.type === 'folder') out.push(...pagesInNavOrder(node.children));
+    else {
+      const page = source.getNodePage(node);
+      if (page) out.push({ page });
+    }
+  }
+  return out;
+}
+
+async function homeMarkdown() {
+  const home = getHome();
+  return `# ${home.title}
+
+${stripTwoslash(await home.getText('processed'))}`;
+}
+
+// llms.txt: the home text, then one line per page linking to its Markdown version.
+export async function llmsIndex() {
+  const lines = pagesInNavOrder().map(({ separator, page }) =>
+    page
+      ? `- [${page.data.title}](${page.url}.md): ${page.data.description ?? ''}`
+      : `\n## ${separator}\n`,
+  );
+  return `${(await homeMarkdown()).trimEnd()}\n${lines.join('\n')}\n`;
+}
+
+// llms-full.txt: the home text, then every page in full, in sidebar order.
+export async function llmsFull() {
+  const pages = pagesInNavOrder().flatMap(({ page }) => (page ? [page] : []));
+  const rendered = await Promise.all(pages.map((page) => docsLlms.page(page)));
+  return [await homeMarkdown(), ...rendered].join('\n\n');
+}

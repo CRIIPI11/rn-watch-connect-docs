@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "---API---",
+    "watch-status",
+    "messages",
+    "data-messages",
+    "application-context",
+    "user-info",
+    "file-transfer",
+    "errors",
+    "---Upgrading---",
+    "migration"
+  ]
+}

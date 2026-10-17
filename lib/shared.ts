@@ -1,15 +1,23 @@
 import { createGetUrl } from 'fumadocs-core/source';
+import libraryPackage from 'rn-watch-connect/package.json';
 
-export const appName = 'My App';
+export const appName = 'rn-watch-connect';
+
+// The documented version ("2.0"), read from the pinned dev dependency so the label can't drift.
+export const libraryVersion = libraryPackage.version.split('.').slice(0, 2).join('.');
+
 export const docsRoute = '/docs';
 export const docsImageRoute = '/og/docs';
 export const docsContentRoute = '/llms.mdx/docs';
 
-// fill this with your actual GitHub info, for example:
+// The library this site documents (the navbar's GitHub link).
+export const libraryRepoUrl = 'https://github.com/CRIIPI11/rn-watch-connect';
+
+// This site's own repo ("Edit on GitHub" links).
 export const gitConfig = {
-  user: 'fuma-nama',
-  repo: 'fumadocs',
-  branch: 'main',
+  user: 'CRIIPI11',
+  repo: 'rn-watch-connect-docs',
+  branch: 'master',
 };
 
 const getContentUrl = createGetUrl(docsContentRoute);

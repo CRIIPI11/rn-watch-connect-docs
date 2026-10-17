@@ -1,12 +1,21 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { appName, gitConfig } from './shared';
+import { appName, libraryRepoUrl, libraryVersion } from './shared';
 
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      // JSX supported
-      title: appName,
+      title: (
+        <>
+          {appName}
+          <span
+            className="rounded-md border px-1.5 py-0.5 text-xs font-medium text-fd-muted-foreground"
+            title={`Docs for ${appName} ${libraryVersion}`}
+          >
+            v{libraryVersion}
+          </span>
+        </>
+      ),
     },
-    githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
+    githubUrl: libraryRepoUrl,
   };
 }
