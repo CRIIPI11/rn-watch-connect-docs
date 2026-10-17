@@ -25,7 +25,8 @@ const homeCollection = defineCollections({
   type: 'doc',
   dir: 'content',
   files: ['home.mdx'],
-  schema: pageSchema,
+  // `llmsSkip` lists `##` sections written for people only, left out of llms.txt and llms-full.txt.
+  schema: pageSchema.extend({ llmsSkip: z.array(z.string()).default([]) }),
   postprocess: {
     includeProcessedMarkdown: true,
   },
@@ -44,17 +45,35 @@ export const source = loader({
   plugins: [lucideIconsPlugin()],
 });
 
-// Twoslash markup is for the type-checker and hover popups. Agents only need the plain code.
-function stripTwoslash(markdown: string) {
+// The site's Markdown, rewritten for agents: plain code (no Twoslash markup), no heading anchors,
+// callouts as blockquotes, and links to the `.md` version of each page.
+function toAgentMarkdown(markdown: string) {
   return markdown
     .replace(/^(```\w+)[^\n]*\btwoslash\b[^\n]*$/gm, '$1')
-    .replace(/^[ \t]*\/\/[ \t]*(\^[?|~^]+|@\w+.*|---(cut|cut-after|cut-start|cut-end)---)[ \t]*\n/gm, '');
+    .replace(/^[ \t]*\/\/[ \t]*(\^[?|~^]+|@\w+.*|---(cut|cut-after|cut-start|cut-end)---)[ \t]*\n/gm, '')
+    .replace(/^(#{1,6} .*?) \[#[\w-]+\]$/gm, '$1')
+    .replace(
+      /^<Callout(?:[^>]*?title="([^"]*)")?[^>]*>\n([\s\S]*?)\n<\/Callout>$/gm,
+      (_, title: string | undefined, body: string) => {
+        const lines = body.replace(/^ {2}/gm, '').split('\n');
+        if (title) lines.unshift(`**${title}**`, '');
+        return lines.map((line) => (line ? `> ${line}` : '>')).join('\n');
+      },
+    )
+    .replace(/\]\((\/docs\/[\w-]+)(#[\w-]+)?\)/g, ']($1.md$2)');
+}
+
+function skipSections(markdown: string, headings: string[]) {
+  return headings.reduce(
+    (text, heading) => text.replace(new RegExp(`^## ${heading}\\n[\\s\\S]*?(?=^## |(?![\\s\\S]))`, 'm'), ''),
+    markdown,
+  );
 }
 
 export const docsLlms = llms(source, {
   renderPage: async (page) => `# ${page.data.title} (${page.url})
 
-${stripTwoslash(await page.data.getText('processed'))}`,
+${toAgentMarkdown(await page.data.getText('processed'))}`,
 });
 
 type PageTreeNode = ReturnType<typeof source.getPageTree>['children'][number];
@@ -77,7 +96,7 @@ async function homeMarkdown() {
   const home = getHome();
   return `# ${home.title}
 
-${stripTwoslash(await home.getText('processed'))}`;
+${skipSections(toAgentMarkdown(await home.getText('processed')), home.llmsSkip)}`;
 }
 
 // llms.txt: the home text, then one line per page linking to its Markdown version.

@@ -39,7 +39,8 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 - **Page subtitles:** the frontmatter `description` is a short sentence for people. It's shown under the page title and used as the HTML meta description, but not in `llms.txt`.
 - **`/llms-full.txt`:** the home text, then every page in full, Migration last.
 - **Per-page Markdown:** at `/docs/<page>.md`.
-- Both files follow the sidebar order (`content/docs/meta.json`). Twoslash markup (the `twoslash` code-block flag, `// ^?` lines) is stripped, so agents get plain code.
+- Both files follow the sidebar order (`content/docs/meta.json`). The Markdown is rewritten for agents: Twoslash markup (the `twoslash` code-block flag, `// ^?` lines) and heading anchors are stripped, callouts become blockquotes, and links to `/docs/<page>` point to `/docs/<page>.md`.
+- Home sections written only for people are listed in `home.mdx`'s `llmsSkip` frontmatter and left out of both files (today: "Why rn-watch-connect").
 - Everything is generated from the pages. No hand-written copies.
 
 ## Tech
