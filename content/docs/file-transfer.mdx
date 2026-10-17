@@ -4,3 +4,242 @@ description: "Send files to the Watch in the background, and receive the files i
 entries: "transferFile, cancelFileTransfer, outstandingFileTransfers, onFileReceived, onFileReceiveFailed, onFileTransferFinished"
 ---
 
+A **File Transfer** is a file, with optional metadata, queued for background delivery to the Watch. The Watch doesn't have to be reachable.
+
+Each file you send is a **Transfer** until it's delivered:
+
+- [`transferFile`](#transferfile) starts one and returns its **Transfer snapshot**.
+- [`outstandingFileTransfers`](#outstandingfiletransfers) lists the ones not delivered yet, with their progress.
+- [`cancelFileTransfer`](#cancelfiletransfer) cancels one by its id.
+- [`onFileTransferFinished`](#onfiletransferfinished) fires exactly once per Transfer: when it's delivered, fails or is cancelled.
+
+Files the Watch sends you are **Received files**. They arrive through [`onFileReceived`](#onfilereceived), or through [`onFileReceiveFailed`](#onfilereceivefailed) when one couldn't be kept.
+
+<Callout title="Transfer ids last for one app run">
+  After your app restarts, a Transfer that's still outstanding gets a **new id**. Read
+  `outstandingFileTransfers` at launch to pick them up. Their finish events and
+  `cancelFileTransfer` use the new ids.
+</Callout>
+
+## `transferFile`
+
+```ts
+transferFile(file: string, metadata?: Record<string, any>): FileTransfer
+```
+
+Queues a file for delivery to the Watch and returns at once. The Watch app receives it in [`session(_:didReceive:)`](https://developer.apple.com/documentation/watchconnectivity/wcsessiondelegate/session(_:didreceive:)).
+
+WatchConnectivity keeps its own copy of the file, so you can delete yours right after calling `transferFile`. That doesn't stop or fail the Transfer.
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `file` | `string` | A `file://` URL of an existing file, such as the `uri` of an `expo-file-system` `File`. |
+| `metadata` | `Record<string, any>` (optional) | A dictionary sent with the file, for example its original name. |
+
+**Returns** the Transfer snapshot, `FileTransfer`, in the same shape as [`outstandingFileTransfers`](#outstandingfiletransfers):
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | The Transfer id, valid for the current app run. |
+| `isTransferring` | `boolean` | Whether the Transfer is in progress right now. |
+| `progress` | `FileProgress` | `fractionCompleted` (0 to 1), `completedUnitCount` and `totalUnitCount` (bytes). |
+| `file` | `File` | `fileURL` (the file being sent) and `metadata` (what you passed). |
+
+**Throws** (synchronously):
+
+| Code | When |
+| --- | --- |
+| `ERR_INVALID_FILE_URL` | `file` isn't a URL the library can read. |
+| `ERR_FILE_NOT_FOUND` | There's no file at `file`. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+Its error `message` starts with Expo's prefix, "Calling the 'transferFile' function has failed", so match on `code`. Delivery failures don't throw here: they arrive later, in [`onFileTransferFinished`](#onfiletransferfinished).
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect, { type WatchConnectErrorCode } from "rn-watch-connect";
+
+const uri = "file:///path/to/Documents/route.gpx";
+
+try {
+  const transfer = RnWatchConnect.transferFile(uri, { name: "route.gpx" });
+  console.log("Queued Transfer", transfer.id);
+} catch (error) {
+  const code = (error as { code?: WatchConnectErrorCode }).code;
+  if (code === "ERR_FILE_NOT_FOUND") {
+    // The file was moved or deleted before you could send it.
+  }
+}
+```
+
+## `cancelFileTransfer`
+
+```ts
+cancelFileTransfer(transferId: string): { id: string }
+```
+
+Cancels an outstanding File Transfer. Its [`onFileTransferFinished`](#onfiletransferfinished) event is sent immediately, with `error.code` `"ERR_TRANSFER_CANCELLED"`.
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `transferId` | `string` | The `id` of an outstanding Transfer, from the current app run. |
+
+**Returns** `{ id: string }`: the id of the cancelled Transfer.
+
+**Throws** (synchronously):
+
+| Code | When |
+| --- | --- |
+| `ERR_INVALID_TRANSFER_ID` | `transferId` isn't an outstanding Transfer: it was already delivered, already cancelled, or is from an earlier app run. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+Its error `message` starts with Expo's prefix, "Calling the 'cancelFileTransfer' function has failed", so match on `code`.
+
+If the Transfer was delivered just before you cancel, the cancel throws `ERR_INVALID_TRANSFER_ID` and the finish event reports the delivery, with `error: null`.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+// Cancel every File Transfer still waiting.
+for (const transfer of RnWatchConnect.outstandingFileTransfers) {
+  RnWatchConnect.cancelFileTransfer(transfer.id);
+}
+```
+
+## `outstandingFileTransfers`
+
+```ts
+readonly outstandingFileTransfers: FileTransfer[]
+```
+
+The File Transfers that haven't been delivered yet, as Transfer snapshots (`id`, `isTransferring`, `progress`, `file`). It's `[]` when there are none, and on platforms other than iOS.
+
+WatchConnectivity has no progress event. To show progress, read this property every so often, and use [`onFileTransferFinished`](#onfiletransferfinished) to know when a Transfer is done.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+const timer = setInterval(() => {
+  for (const { id, progress } of RnWatchConnect.outstandingFileTransfers) {
+    console.log(id, `${Math.round(progress.fractionCompleted * 100)}%`);
+  }
+}, 1000);
+
+// Later: clearInterval(timer);
+```
+
+## `onFileReceived`
+
+```ts
+onFileReceived: (file: File) => void
+```
+
+Fires when a Received file arrives from the Watch.
+
+**Event**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `fileURL` | `string` | Where the file is now: in your app's temporary directory. |
+| `metadata` | `Record<string, any>` | What the Watch sent with the file. |
+
+**The file is yours from this event on.** The library moves each Received file into your app's temporary directory, then never moves, overwrites or deletes it again.
+
+- iOS can delete files in the temporary directory while your app isn't running. **Move or copy the file somewhere permanent if you need to keep it**, and delete it when you're done.
+- Received files never overwrite each other. If the name is taken, the new file is numbered the way Finder does it: `photo.jpg`, then `photo(1).jpg`, `photo(2).jpg`, and so on. `metadata` is passed through unchanged, so you can still read the original name if the Watch sent it there.
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function FileInbox() {
+  useEventListener(RnWatchConnect, "onFileReceived", ({ fileURL, metadata }) => {
+    const name = metadata.name ?? fileURL.split("/").pop();
+    console.log(`Received ${name} at ${fileURL}`);
+    // Move or copy it somewhere permanent here if you need to keep it.
+  });
+  return null;
+}
+```
+
+## `onFileReceiveFailed`
+
+```ts
+onFileReceiveFailed: (event: FileReceiveFailedEvent) => void
+```
+
+Fires when a file from the Watch arrived but couldn't be kept, for example because the iPhone is out of storage. **The file is lost**: WatchConnectivity has already deleted it, and `onFileReceived` doesn't fire for it. Use `fileName` and `metadata` to tell which file it was, for example to ask the Watch to send it again.
+
+**Event**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `message` | `string` | Why the file couldn't be kept. |
+| `code` | `WatchConnectErrorCode` | `ERR_INSUFFICIENT_SPACE` when the iPhone is out of storage, otherwise `ERR_FILE_RECEIVE_FAILED`. |
+| `fileName` | `string` | The file name the Watch sent. |
+| `metadata` | `Record<string, any> \| null` | What the Watch sent with the file, or `null` when it sent nothing. |
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function LostFileWarning() {
+  useEventListener(RnWatchConnect, "onFileReceiveFailed", ({ code, fileName }) => {
+    if (code === "ERR_INSUFFICIENT_SPACE") {
+      console.warn(`Not enough storage to keep ${fileName} from the Watch.`);
+    } else {
+      console.warn(`Couldn't keep ${fileName} from the Watch.`);
+    }
+  });
+  return null;
+}
+```
+
+## `onFileTransferFinished`
+
+```ts
+onFileTransferFinished: (event: FileTransferFinishedEvent) => void
+```
+
+Fires **exactly once per File Transfer**, however it ends. The event is the Transfer snapshot (`id`, `isTransferring`, `progress`, `file`) plus `error`:
+
+| How it ended | `error` |
+| --- | --- |
+| Delivered to the Watch | `null` |
+| Failed | `{ message, code }` from WatchConnectivity, for example `code: "ERR_DELIVERY_FAILED"` |
+| Cancelled with `cancelFileTransfer` | `{ message, code: "ERR_TRANSFER_CANCELLED" }`, sent immediately |
+
+If your Watch app is uninstalled during a Transfer, the Transfer stays outstanding and no finish event is sent, even after a reinstall. Cancel it to end it, for example when [`onWatchAppInstallChanged`](/docs/watch-status#onwatchappinstallchanged) reports `isWatchAppInstalled: false`.
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function FileTransferLog() {
+  useEventListener(RnWatchConnect, "onFileTransferFinished", (transfer) => {
+    if (transfer.error?.code === "ERR_TRANSFER_CANCELLED") {
+      console.log("Cancelled:", transfer.id);
+    } else if (transfer.error) {
+      console.log("Failed:", transfer.id, transfer.error.code);
+    } else {
+      console.log("Delivered:", transfer.file.fileURL);
+    }
+  });
+  return null;
+}
+```
