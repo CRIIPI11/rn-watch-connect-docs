@@ -4,3 +4,86 @@ description: "Every Error code the library reports, and how to handle errors saf
 entries: "WatchConnectErrorCode: every Error code, and why to match on code, never on message"
 ---
 
+Every failure has a stable **Error code** in `code`. You'll find it on errors that are thrown, on errors a Promise rejects with, and on the `error` in events such as [`onFileTransferFinished`](/docs/file-transfer#onfiletransferfinished) and [`onFileReceiveFailed`](/docs/file-transfer#onfilereceivefailed).
+
+<Callout title="Match on code, never on message">
+  `message` is for people, and it can change between versions. Functions that throw directly also
+  get Expo's prefix in their message: "Calling the 'transferFile' function has failed → Caused by: …".
+  `code` stays the same.
+</Callout>
+
+The same failure has the same code whichever function reports it. For example, [`sendMessage`](/docs/messages#sendmessage) and [`sendMessageWithoutReply`](/docs/messages#sendmessagewithoutreply) both use `ERR_WATCH_NOT_REACHABLE`.
+
+## `WatchConnectErrorCode`
+
+```ts
+import { type WatchConnectErrorCode } from "rn-watch-connect";
+```
+
+The TypeScript union of every code on this page. Use it to type the codes you check, so a misspelled code fails to compile.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect, { type WatchConnectErrorCode } from "rn-watch-connect";
+
+function errorCode(error: unknown): WatchConnectErrorCode | undefined {
+  return (error as { code?: WatchConnectErrorCode } | null)?.code;
+}
+
+try {
+  await RnWatchConnect.sendMessageWithoutReply({ ping: 1 });
+} catch (error) {
+  switch (errorCode(error)) {
+    case "ERR_WATCH_NOT_REACHABLE":
+      // Try again later, or use transferUserInfo, which doesn't need the Watch to be reachable.
+      break;
+    case "ERR_UNSUPPORTED_PLATFORM":
+      // Not on iOS: hide your Watch features.
+      break;
+    default:
+      throw error;
+  }
+}
+```
+
+## The library's own codes
+
+| Code | When | Reported by |
+| --- | --- | --- |
+| `ERR_WATCH_NOT_REACHABLE` | A Message or Data Message was sent while the Watch isn't reachable. Nothing was sent. | [`sendMessage`](/docs/messages#sendmessage), [`sendMessageWithoutReply`](/docs/messages#sendmessagewithoutreply), [`sendDataMessage`](/docs/data-messages#senddatamessage), [`sendDataMessageWithoutReply`](/docs/data-messages#senddatamessagewithoutreply) |
+| `ERR_REPLY_NOT_PENDING` | A Reply was sent for a Message already replied to, or no longer waiting for a Reply. | The `reply` function of [`onMessageWithReply`](/docs/messages#onmessagewithreply) and [`onDataMessageWithReply`](/docs/data-messages#ondatamessagewithreply), and the deprecated `replyTo…` methods |
+| `ERR_INVALID_BASE64` | A Data Message or data Reply isn't valid base64. `message` says why. | [Data Messages](/docs/data-messages) |
+| `ERR_INVALID_TRANSFER_ID` | The id isn't an outstanding Transfer: already delivered, already cancelled, or from an earlier app run. | [`cancelUserInfoTransfer`](/docs/user-info#canceluserinfotransfer), [`cancelFileTransfer`](/docs/file-transfer#cancelfiletransfer) |
+| `ERR_INVALID_FILE_URL` | The file URL can't be read. | [`transferFile`](/docs/file-transfer#transferfile) |
+| `ERR_FILE_NOT_FOUND` | There's no file at the URL. | [`transferFile`](/docs/file-transfer#transferfile) |
+| `ERR_TRANSFER_CANCELLED` | The Transfer was cancelled. | The finish events: [`onUserInfoTransferFinished`](/docs/user-info#onuserinfotransferfinished), [`onFileTransferFinished`](/docs/file-transfer#onfiletransferfinished) |
+| `ERR_INSUFFICIENT_SPACE` | The iPhone is out of storage, so a file from the Watch couldn't be kept. (This is also WatchConnectivity's own code for running out of space.) | [`onFileReceiveFailed`](/docs/file-transfer#onfilereceivefailed) |
+| `ERR_FILE_RECEIVE_FAILED` | A file from the Watch couldn't be kept, for another reason. | [`onFileReceiveFailed`](/docs/file-transfer#onfilereceivefailed) |
+| `ERR_UNSUPPORTED_PLATFORM` | A method was called on a platform other than iOS. | Every method |
+| `ERR_UNEXPECTED` | Any other failure. | Any method |
+
+## WatchConnectivity's codes
+
+WatchConnectivity's own errors, for example when sending, when updating the Application Context, or in finish events, use `ERR_` plus the name of Apple's [`WCError.Code`](https://developer.apple.com/documentation/watchconnectivity/wcerror/code). Its `notReachable` uses the library's `ERR_WATCH_NOT_REACHABLE`, so one failure has one code.
+
+| Code | Apple's `WCError.Code` | When |
+| --- | --- | --- |
+| `ERR_GENERIC_ERROR` | `genericError` | An unknown problem. |
+| `ERR_SESSION_NOT_SUPPORTED` | `sessionNotSupported` | This iPhone doesn't support WatchConnectivity. |
+| `ERR_SESSION_MISSING_DELEGATE` | `sessionMissingDelegate` | The Session has no delegate to handle it. |
+| `ERR_SESSION_NOT_ACTIVATED` | `sessionNotActivated` | The Session isn't activated. |
+| `ERR_SESSION_INACTIVE` | `sessionInactive` | The Session is inactive. |
+| `ERR_DEVICE_NOT_PAIRED` | `deviceNotPaired` | No Apple Watch is paired with this iPhone. |
+| `ERR_WATCH_APP_NOT_INSTALLED` | `watchAppNotInstalled` | Your Watch app isn't installed on the paired Watch. |
+| `ERR_COMPANION_APP_NOT_INSTALLED` | `companionAppNotInstalled` | The companion app isn't installed on the other side. |
+| `ERR_WATCH_ONLY_APP` | `watchOnlyApp` | The Watch app is a watch-only app, with no iPhone app to talk to. |
+| `ERR_INVALID_PARAMETER` | `invalidParameter` | A parameter is invalid. |
+| `ERR_PAYLOAD_TOO_LARGE` | `payloadTooLarge` | What you sent is over WatchConnectivity's size limit. |
+| `ERR_PAYLOAD_UNSUPPORTED_TYPES` | `payloadUnsupportedTypes` | A dictionary contains a value WatchConnectivity can't carry. |
+| `ERR_MESSAGE_REPLY_FAILED` | `messageReplyFailed` | The Reply couldn't be returned. |
+| `ERR_MESSAGE_REPLY_TIMED_OUT` | `messageReplyTimedOut` | The other side didn't reply in time. |
+| `ERR_FILE_ACCESS_DENIED` | `fileAccessDenied` | The file couldn't be read for a File Transfer. |
+| `ERR_DELIVERY_FAILED` | `deliveryFailed` | The Transfer couldn't be delivered. |
+| `ERR_INSUFFICIENT_SPACE` | `insufficientSpace` | The receiving side doesn't have enough space to store it. |
+| `ERR_TRANSFER_TIMED_OUT` | `transferTimedOut` | The Transfer hit its time limit before it finished. |
