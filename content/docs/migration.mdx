@@ -4,3 +4,142 @@ description: "What an app on rn-watch-connect 1.x must change, and what it can c
 entries: "Breaking changes, behaviour changes to check, deprecated APIs (replyToMessage, replyToDataMessage, replyId) and new optional features in 2.0"
 ---
 
+Most apps need three things: the new requirements, one renamed field, and a check of the behaviour changes below. Everything else is optional.
+
+## 1. Update the requirements
+
+2.0 needs **Expo SDK 57 or later** (React Native 0.86+) and **iOS 16.4 or later**. If your app must stay on an older SDK or support iOS 15, stay on `rn-watch-connect@1.x`.
+
+```bash
+npm install rn-watch-connect@2
+```
+
+This is a native change, so **rebuild the native app**, for example with `npx expo run:ios` or a new development build. A JS reload isn't enough.
+
+## 2. Fix the breaking change
+
+### Rename the `transferFile` progress keys
+
+`transferFile` now returns the same progress keys as `outstandingFileTransfers` and the `FileTransfer` type. Rename `total` and `completed` wherever you read them.
+
+```ts
+// Before (1.x)
+const { progress } = RnWatchConnect.transferFile(uri);
+console.log(progress.completed, "of", progress.total);
+```
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+const uri = "file:///path/to/file.txt";
+// ---cut---
+// After (2.0)
+const { progress } = RnWatchConnect.transferFile(uri);
+console.log(progress.completedUnitCount, "of", progress.totalUnitCount);
+```
+
+## 3. Check these behaviour changes
+
+### Status events no longer fire when a listener is added
+
+In 1.x, a new listener for `onReachabilityChanged`, `onWatchPairedChanged` or `onWatchAppInstallChanged` was called right away with the current value. In 2.0 they fire **only on a real change**, so read the property for the starting value. With `useEvent`, pass it as the initial value:
+
+```tsx
+// Before (1.x): relied on the event firing at once
+const event = useEvent(RnWatchConnect, "onReachabilityChanged");
+const isWatchReachable = event?.isWatchReachable ?? false;
+```
+
+```tsx twoslash
+import { useEvent } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function Reachability() {
+  // ---cut---
+  // After (2.0): seed from the property
+  const { isWatchReachable } = useEvent(RnWatchConnect, "onReachabilityChanged", {
+    isWatchReachable: RnWatchConnect.isWatchReachable,
+  });
+  // ---cut-after---
+  return isWatchReachable;
+}
+```
+
+The same goes for the other events: they no longer replay the last value, or an empty `{}`, when you add a listener. If you filtered out those empty events, you can remove that code. See [Watch status](/docs/watch-status).
+
+### Match errors on `code`, not on `message`
+
+In 1.x, almost every failure had `code: "ERR_UNEXPECTED"`. In 2.0 each failure has its own [Error code](/docs/errors), such as `ERR_WATCH_NOT_REACHABLE` or `ERR_INVALID_TRANSFER_ID`. On platforms other than iOS, the code is `ERR_UNSUPPORTED_PLATFORM`.
+
+Messages changed too. Functions that throw directly now get Expo's prefix, "Calling the '…' function has failed → Caused by: …". These are `sendMessageWithoutReply`, `sendDataMessageWithoutReply`, `replyToMessage`, `replyToDataMessage`, `updateApplicationContext`, `transferFile`, `cancelUserInfoTransfer` and `cancelFileTransfer`. If you matched on message text, match on `code` instead:
+
+```ts
+// Before (1.x)
+if (String(error).includes("not reachable")) { /* … */ }
+```
+
+```ts twoslash
+import { type WatchConnectErrorCode } from "rn-watch-connect";
+declare const error: unknown;
+// ---cut---
+// After (2.0)
+if ((error as { code?: WatchConnectErrorCode }).code === "ERR_WATCH_NOT_REACHABLE") {
+  // …
+}
+```
+
+### The reply error has a new message
+
+Replying twice, or after a Message stopped waiting, now fails with "Already replied, or the message is no longer waiting for a Reply" instead of "Invalid reply ID". Match on its code, `ERR_REPLY_NOT_PENDING`.
+
+### `transferUserInfo` returns the full Transfer snapshot
+
+It now includes `userInfo`, the same shape as `outstandingUserInfoTransfers`. Its type is `OutstandingUserInfoTransfer`. The old name, `UserInfoTransfer`, is a deprecated alias, so existing code still compiles.
+
+### Stricter TypeScript types
+
+These are type changes only, with no runtime effect:
+
+- `watchActivationState` is now `WatchActivationState` (`"notActivated" | "inactive" | "activated" | "unknown"`) instead of `string`. A comparison against a misspelled value now fails to compile.
+- `applicationContext`, `receivedApplicationContext`, and what `onMessageReceived`, `onMessageWithReply`, `onApplicationContextChanged` and `onUserInfoReceived` send are now `Record<string, any>` instead of `any`.
+
+### Fixes that may touch your code
+
+- **Status event keys.** `onReachabilityChanged`, `onWatchPairedChanged` and `onWatchAppInstallChanged` now send the documented keys `{ isWatchReachable }`, `{ isWatchPaired }` and `{ isWatchAppInstalled }`. If you read the old keys (`isReachable`, `isPaired`, `isAppInstalled`) as a workaround, switch to the documented ones.
+- **`watchActivationState` off iOS.** It's now `"unknown"` on platforms other than iOS, instead of `"notActivated"`.
+- **Received files.** They no longer overwrite each other. A taken name is numbered, as in `photo(1).jpg`. See [`onFileReceived`](/docs/file-transfer#onfilereceived).
+- **Transfer ids.** They're now unique for the whole app run, but still valid only for the current run.
+
+## 4. Move off the deprecated reply methods (optional)
+
+`replyToMessage`, `replyToDataMessage` and the events' `replyId` still work, and will be removed in a future major version. Call the event's **Reply function**, `reply`, instead:
+
+```tsx
+// Before (deprecated)
+useEventListener(RnWatchConnect, "onMessageWithReply", ({ message, replyId }) => {
+  RnWatchConnect.replyToMessage(replyId, { ok: true });
+});
+```
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function Responder() {
+  // ---cut---
+  // After
+  useEventListener(RnWatchConnect, "onMessageWithReply", ({ message, reply }) => {
+    reply({ ok: true });
+  });
+  // ---cut-after---
+  return null;
+}
+```
+
+Data Messages work the same way: `({ data, reply }) => reply(base64String)` replaces `replyToDataMessage(replyId, base64String)`. See [Messages](/docs/messages#onmessagewithreply) and [Data Messages](/docs/data-messages#ondatamessagewithreply).
+
+## 5. Use what's new (optional)
+
+- **Finish events.** [`onUserInfoTransferFinished`](/docs/user-info#onuserinfotransferfinished) and [`onFileTransferFinished`](/docs/file-transfer#onfiletransferfinished) fire exactly once per Transfer, when it's delivered, fails or is cancelled.
+- **[`onFileReceiveFailed`](/docs/file-transfer#onfilereceivefailed).** Tells you when a file from the Watch couldn't be kept. In 1.x it was lost without any event.
+- **The `reply` function** on `onMessageWithReply` and `onDataMessageWithReply` (see step 4).
+- **[`WatchConnectErrorCode`](/docs/errors#watchconnecterrorcode).** The TypeScript union of every Error code.
