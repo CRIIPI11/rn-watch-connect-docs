@@ -4,3 +4,114 @@ description: "Send the Watch your latest values. Each update replaces the previo
 entries: "updateApplicationContext, applicationContext, receivedApplicationContext, onApplicationContextChanged"
 ---
 
+The **Application Context** is a dictionary describing the latest values the other side needs, such as a selected theme or the current score. It's delivered in the background, so the Watch doesn't have to be reachable. Only the most recent one is delivered: each update replaces the previous one.
+
+Because an update replaces the whole dictionary, send everything the Watch needs each time, not just what changed. If every value matters, not only the latest, queue [User Info](/docs/user-info) instead.
+
+Each side has its own Application Context:
+
+- **Outbound** (iPhone → Watch): [`updateApplicationContext`](#updateapplicationcontext) sends one. [`applicationContext`](#applicationcontext) is the last one you sent.
+- **Inbound** (Watch → iPhone): [`onApplicationContextChanged`](#onapplicationcontextchanged) fires when one arrives. [`receivedApplicationContext`](#receivedapplicationcontext) is the last one received.
+
+A dictionary's values must be ones WatchConnectivity can carry: strings, numbers, booleans, arrays and nested objects.
+
+## `updateApplicationContext`
+
+```ts
+updateApplicationContext<T extends Record<string, any>>(applicationContext: T): Promise<void>
+```
+
+Sends a new Application Context to the Watch, replacing the previous one. The Watch app receives it in [`session(_:didReceiveApplicationContext:)`](https://developer.apple.com/documentation/watchconnectivity/wcsessiondelegate/session(_:didreceiveapplicationcontext:)).
+
+**Type parameters**
+
+| Name | Description |
+| --- | --- |
+| `T` | The shape of the Application Context you send. |
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `applicationContext` | `T` | The full Application Context. |
+
+**Returns** `Promise<void>`, which resolves once the Session has taken the update. Delivery happens later, in the background.
+
+**Throws** (the Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_PAYLOAD_UNSUPPORTED_TYPES` | The dictionary contains a value WatchConnectivity can't carry. |
+| `ERR_PAYLOAD_TOO_LARGE` | The dictionary is too large to send. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+WatchConnectivity can fail with other codes too, such as `ERR_SESSION_NOT_ACTIVATED`, `ERR_DEVICE_NOT_PAIRED` or `ERR_WATCH_APP_NOT_INSTALLED`. See [Error codes](/docs/errors) for the full list.
+
+Its error `message` starts with Expo's prefix, "Calling the 'updateApplicationContext' function has failed", so match on `code`.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+type WatchDisplay = { theme: "light" | "dark"; units: "metric" | "imperial" };
+
+await RnWatchConnect.updateApplicationContext<WatchDisplay>({
+  theme: "dark",
+  units: "metric",
+});
+```
+
+## `applicationContext`
+
+```ts
+readonly applicationContext: Record<string, any>
+```
+
+The last Application Context this iPhone sent with [`updateApplicationContext`](#updateapplicationcontext). It's `{}` when there's none, and on platforms other than iOS.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+// Change one value and send the rest unchanged.
+await RnWatchConnect.updateApplicationContext({
+  ...RnWatchConnect.applicationContext,
+  theme: "light",
+});
+```
+
+## `receivedApplicationContext`
+
+```ts
+readonly receivedApplicationContext: Record<string, any>
+```
+
+The last Application Context received from the Watch. It's `{}` when there's none, and on platforms other than iOS. Read it for the starting value, then listen to [`onApplicationContextChanged`](#onapplicationcontextchanged) for new ones.
+
+## `onApplicationContextChanged`
+
+```ts
+onApplicationContextChanged: (applicationContext: Record<string, any>) => void
+```
+
+Fires when a new Application Context arrives from the Watch. The listener gets the whole dictionary, which replaces the previous one.
+
+It fires only when one actually arrives, not when you add a listener. For the starting value, read [`receivedApplicationContext`](#receivedapplicationcontext).
+
+**Example**
+
+```tsx twoslash
+import { useEvent } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function WatchTheme() {
+  const context = useEvent(
+    RnWatchConnect,
+    "onApplicationContextChanged",
+    RnWatchConnect.receivedApplicationContext,
+  );
+  return `Theme on the Watch: ${context.theme ?? "default"}`;
+}
+```
