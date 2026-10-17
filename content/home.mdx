@@ -1,6 +1,61 @@
 ---
 title: rn-watch-connect
-description: Talk to a companion watchOS app from your Expo or React Native app.
+description: Communicate with your companion watchOS app from your Expo and React Native app.
 ---
 
-Talk to a companion watchOS app from your Expo or React Native app.
+rn-watch-connect is a library for communicating with your companion watchOS app from your Expo and React Native app. It's built for Expo, with the Expo Modules API, on top of Apple's [WatchConnectivity](https://developer.apple.com/documentation/watchconnectivity).
+
+## Requirements
+
+- **Expo SDK 57 or later** (React Native 0.86+)
+- **iOS 16.4 or later**
+- **A companion watchOS app** to talk to
+
+The library is **iOS only**. On other platforms, its methods fail with `ERR_UNSUPPORTED_PLATFORM` and `watchActivationState` is `"unknown"`.
+
+<Callout title="On an older Expo SDK, or supporting iOS 15?">
+  Stay on `rn-watch-connect@1.x`. Its docs are in the [1.2.0 README](https://github.com/CRIIPI11/rn-watch-connect/blob/v1.2.0/README.md).
+</Callout>
+
+## Installation
+
+```bash
+npm install rn-watch-connect
+```
+
+The library has native code, so **rebuild the native app** after installing or upgrading it, for example with `npx expo run:ios` or a new development build. A JS reload isn't enough, and it doesn't run in Expo Go.
+
+## Quick start
+
+Send a Message when the Watch is reachable, and listen for Messages from it:
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function WatchPing() {
+  useEventListener(RnWatchConnect, "onMessageReceived", (message) => {
+    console.log("From the Watch:", message);
+  });
+
+  async function ping() {
+    if (!RnWatchConnect.isWatchReachable) return;
+    const reply = await RnWatchConnect.sendMessage({ ping: Date.now() });
+    console.log("Reply:", reply);
+  }
+
+  return null; // Call ping() from a button.
+}
+```
+
+When something fails, the error has a stable `code`, such as `ERR_WATCH_NOT_REACHABLE`. Match on it, never on `message`. See [Error codes](/docs/errors).
+
+## Why rn-watch-connect
+
+- **Built for Expo.** Written with the Expo Modules API for Expo SDK 57. Listen to events with Expo's own `useEvent` and `useEventListener`. See [Watch status](/docs/watch-status).
+- **Promise-based.** `await sendMessage(...)` resolves with the Watch's Reply, and rejects when it fails. See [Messages](/docs/messages).
+- **Reply in one call.** An incoming Message that asks for a Reply comes with its own `reply()` function, and the first reply wins. See [`onMessageWithReply`](/docs/messages#onmessagewithreply).
+- **Errors you can switch on.** Every failure has a stable `code`, such as `ERR_WATCH_NOT_REACHABLE`, typed as `WatchConnectErrorCode`, including WatchConnectivity's own errors. See [Error codes](/docs/errors).
+- **Transfers with a clear ending.** Each [User Info](/docs/user-info) and [File Transfer](/docs/file-transfer) gets exactly one finish event: delivered, failed or cancelled. Both can be listed and cancelled.
+- **Received files handled safely.** Files from the Watch land in your temporary directory, never overwrite each other, and a file that couldn't be kept is reported instead of lost silently. See [`onFileReceived`](/docs/file-transfer#onfilereceived).
+- **Status you can read right away.** `isWatchReachable`, `isWatchPaired` and the other status values are plain properties, and their events fire only on a real change. See [Watch status](/docs/watch-status).

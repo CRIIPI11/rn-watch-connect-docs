@@ -16,6 +16,7 @@ export function baseOptions(): BaseLayoutProps {
         </>
       ),
     },
+    links: [{ text: 'Docs', url: '/docs', active: 'nested-url' }],
     githubUrl: libraryRepoUrl,
   };
 }
