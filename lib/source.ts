@@ -3,11 +3,14 @@ import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { docsRoute } from './shared';
 import { defineCollections, defineDocs } from 'fumadocs-mdx/macro';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
+import { z } from 'zod';
 
 const docs = defineDocs({
   dir: 'content/docs',
   docs: {
-    schema: pageSchema,
+    // `description` is the page's subtitle for people. `entries` names every property, method and
+    // event on the page, for the llms.txt index, so an agent can find an entry by name.
+    schema: pageSchema.extend({ entries: z.string() }),
     postprocess: {
       includeProcessedMarkdown: true,
     },
@@ -81,7 +84,7 @@ ${stripTwoslash(await home.getText('processed'))}`;
 export async function llmsIndex() {
   const lines = pagesInNavOrder().map(({ separator, page }) =>
     page
-      ? `- [${page.data.title}](${page.url}.md): ${page.data.description ?? ''}`
+      ? `- [${page.data.title}](${page.url}.md): ${page.data.entries}`
       : `\n## ${separator}\n`,
   );
   return `${(await homeMarkdown()).trimEnd()}\n${lines.join('\n')}\n`;

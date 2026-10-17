@@ -32,7 +32,8 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 ## AI-facing output
 
 - **Single source for the home text:** `content/home.mdx`. The home page renders it, and the `llms` routes put it at the top of both files.
-- **`/llms.txt`:** the home text (including the key rules: iOS only, match on `code`, rebuild after install), then one line per page. Each page's frontmatter `description` names the entries on it, e.g. `- [File Transfer](…/docs/file-transfer.md): transferFile, cancelFileTransfer, …`.
+- **`/llms.txt`:** the home text (including the key rules: iOS only, match on `code`, rebuild after install), then one line per page. Each line uses the page's frontmatter `entries` field, which names every entry on it, e.g. `- [File Transfer](…/docs/file-transfer.md): transferFile, cancelFileTransfer, …`. The build fails if a page has no `entries`.
+- **Page subtitles:** the frontmatter `description` is a short sentence for people. It's shown under the page title and used as the HTML meta description, but not in `llms.txt`.
 - **`/llms-full.txt`:** the home text, then every page in full, Migration last.
 - **Per-page Markdown:** at `/docs/<page>.md`.
 - Both files follow the sidebar order (`content/docs/meta.json`). Twoslash markup (the `twoslash` code-block flag, `// ^?` lines) is stripped, so agents get plain code.
