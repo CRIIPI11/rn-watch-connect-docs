@@ -4,3 +4,197 @@ description: "Queue dictionaries for background delivery. Every one arrives, in 
 entries: "transferUserInfo, cancelUserInfoTransfer, outstandingUserInfoTransfers, onUserInfoReceived, onUserInfoTransferFinished"
 ---
 
+A **User Info** is a dictionary queued for background delivery. Unlike [Application Context](/docs/application-context), every User Info is delivered, in order, even when the Watch isn't reachable. Use it when every value matters, such as each completed workout.
+
+Each User Info you send is a **Transfer** until it's delivered:
+
+- [`transferUserInfo`](#transferuserinfo) starts one and returns its **Transfer snapshot**.
+- [`outstandingUserInfoTransfers`](#outstandinguserinfotransfers) lists the ones not delivered yet.
+- [`cancelUserInfoTransfer`](#canceluserinfotransfer) cancels one by its id.
+- [`onUserInfoTransferFinished`](#onuserinfotransferfinished) fires exactly once per Transfer: when it's delivered, fails or is cancelled.
+
+Inbound User Info from the Watch arrives through [`onUserInfoReceived`](#onuserinforeceived).
+
+A dictionary's values must be ones WatchConnectivity can carry: strings, numbers, booleans, arrays and nested objects.
+
+<Callout title="Transfer ids last for one app run">
+  After your app restarts, a Transfer that's still outstanding gets a **new id**. Read
+  `outstandingUserInfoTransfers` at launch to pick them up. Their finish events and
+  `cancelUserInfoTransfer` use the new ids.
+</Callout>
+
+## `transferUserInfo`
+
+```ts
+transferUserInfo<T extends Record<string, any>>(userInfo: T): OutstandingUserInfoTransfer
+```
+
+Queues a User Info for delivery to the Watch and returns at once. The Watch app receives it in [`session(_:didReceiveUserInfo:)`](https://developer.apple.com/documentation/watchconnectivity/wcsessiondelegate/session(_:didreceiveuserinfo:)).
+
+**Type parameters**
+
+| Name | Description |
+| --- | --- |
+| `T` | The shape of the User Info you send. |
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `userInfo` | `T` | The User Info to queue. |
+
+**Returns** the Transfer snapshot, in the same shape as [`outstandingUserInfoTransfers`](#outstandinguserinfotransfers):
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | The Transfer id, valid for the current app run. |
+| `userInfo` | `Record<string, any>` | The User Info being sent. |
+| `isTransferring` | `boolean` | Whether the Transfer is in progress right now. |
+
+The type is `OutstandingUserInfoTransfer`. The older name `UserInfoTransfer` is a deprecated alias of it.
+
+**Throws** (synchronously):
+
+| Code | When |
+| --- | --- |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+Delivery failures don't throw here: they arrive later, in [`onUserInfoTransferFinished`](#onuserinfotransferfinished).
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+const transfer = RnWatchConnect.transferUserInfo({ workout: "run", km: 5.2 });
+//    ^?
+console.log("Queued Transfer", transfer.id);
+```
+
+## `cancelUserInfoTransfer`
+
+```ts
+cancelUserInfoTransfer(transferId: string): { id: string }
+```
+
+Cancels an outstanding User Info Transfer. Its [`onUserInfoTransferFinished`](#onuserinfotransferfinished) event is sent immediately, with `error.code` `"ERR_TRANSFER_CANCELLED"`.
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `transferId` | `string` | The `id` of an outstanding Transfer, from the current app run. |
+
+**Returns** `{ id: string }`: the id of the cancelled Transfer.
+
+**Throws** (synchronously):
+
+| Code | When |
+| --- | --- |
+| `ERR_INVALID_TRANSFER_ID` | `transferId` isn't an outstanding Transfer: it was already delivered, already cancelled, or is from an earlier app run. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+Its error `message` starts with Expo's prefix, "Calling the 'cancelUserInfoTransfer' function has failed", so match on `code`.
+
+If the Transfer was delivered just before you cancel, the cancel throws `ERR_INVALID_TRANSFER_ID` and the finish event reports the delivery, with `error: null`.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect, { type WatchConnectErrorCode } from "rn-watch-connect";
+
+const transfer = RnWatchConnect.transferUserInfo({ draft: true });
+
+try {
+  RnWatchConnect.cancelUserInfoTransfer(transfer.id);
+} catch (error) {
+  const code = (error as { code?: WatchConnectErrorCode }).code;
+  if (code === "ERR_INVALID_TRANSFER_ID") {
+    // Already delivered or cancelled: nothing to do.
+  }
+}
+```
+
+## `outstandingUserInfoTransfers`
+
+```ts
+readonly outstandingUserInfoTransfers: OutstandingUserInfoTransfer[]
+```
+
+The User Info Transfers that haven't been delivered yet, as Transfer snapshots (`id`, `userInfo`, `isTransferring`). It's `[]` when there are none, and on platforms other than iOS.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+// At launch: pick up Transfers from the previous run, with their new ids.
+for (const transfer of RnWatchConnect.outstandingUserInfoTransfers) {
+  console.log("Still queued:", transfer.id, transfer.userInfo);
+}
+```
+
+## `onUserInfoReceived`
+
+```ts
+onUserInfoReceived: (userInfo: Record<string, any>) => void
+```
+
+Fires when a User Info arrives from the Watch. The listener gets the dictionary itself. User Info arrives in the order the Watch sent it.
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function WorkoutInbox() {
+  useEventListener(RnWatchConnect, "onUserInfoReceived", (userInfo) => {
+    console.log("Workout from the Watch:", userInfo.workout);
+  });
+  return null;
+}
+```
+
+## `onUserInfoTransferFinished`
+
+```ts
+onUserInfoTransferFinished: (event: UserInfoTransferFinishedEvent) => void
+```
+
+Fires **exactly once per User Info Transfer**, however it ends. The event is the Transfer snapshot plus `error`:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | The Transfer id. |
+| `userInfo` | `Record<string, any>` | The User Info that was sent. |
+| `isTransferring` | `boolean` | Whether the Transfer was in progress. |
+| `error` | `{ message: string; code: WatchConnectErrorCode } \| null` | How it ended (see below). |
+
+| How it ended | `error` |
+| --- | --- |
+| Delivered to the Watch | `null` |
+| Failed | `{ message, code }` from WatchConnectivity, for example `code: "ERR_DELIVERY_FAILED"` |
+| Cancelled with `cancelUserInfoTransfer` | `{ message, code: "ERR_TRANSFER_CANCELLED" }`, sent immediately |
+
+If your Watch app is uninstalled during a Transfer, the Transfer stays outstanding and no finish event is sent, even after a reinstall. Cancel it to end it, for example when [`onWatchAppInstallChanged`](/docs/watch-status#onwatchappinstallchanged) reports `isWatchAppInstalled: false`.
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function UserInfoTransferLog() {
+  useEventListener(RnWatchConnect, "onUserInfoTransferFinished", (transfer) => {
+    if (transfer.error?.code === "ERR_TRANSFER_CANCELLED") {
+      console.log("Cancelled:", transfer.id);
+    } else if (transfer.error) {
+      console.log("Failed:", transfer.id, transfer.error.code);
+    } else {
+      console.log("Delivered:", transfer.id);
+    }
+  });
+  return null;
+}
+```
