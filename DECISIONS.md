@@ -28,6 +28,7 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 
   `/docs` on its own redirects to `/docs/watch-status`.
 - **Each entry:** signature, parameters, what it returns or sends, what it throws (each code links to Error codes), and a short example. Types appear inline on the entries that use them; there is no Types page. The deprecated reply methods stay on their feature's page, marked deprecated, after the `reply` function that replaces them.
+- **No "iOS only" callout on API pages.** The library is iOS only, which is obvious from what it does, so it's said once, on the home page. `ERR_UNSUPPORTED_PLATFORM` still appears in each entry's Throws table.
 
 ## AI-facing output
 

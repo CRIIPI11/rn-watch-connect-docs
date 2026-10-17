@@ -4,3 +4,211 @@ description: "Send raw bytes to the Watch for immediate delivery, and answer the
 entries: "sendDataMessage, sendDataMessageWithoutReply, onDataMessageReceived, onDataMessageWithReply and its reply function, replyToDataMessage (deprecated)"
 ---
 
+A **Data Message** is a [Message](/docs/messages) whose content is raw bytes instead of a dictionary. Like a Message, it's delivered immediately and only works while the Watch is reachable. Check [`isWatchReachable`](/docs/watch-status#iswatchreachable) before sending.
+
+On the JavaScript side the bytes are always a **base64 encoded string**. That applies to what you send, the Replies you get back, the data you receive and the Replies you send. The Watch app gets the decoded bytes as `Data`.
+
+- **Outbound** (iPhone → Watch): [`sendDataMessage`](#senddatamessage) asks for a Reply, and [`sendDataMessageWithoutReply`](#senddatamessagewithoutreply) doesn't.
+- **Inbound** (Watch → iPhone): [`onDataMessageReceived`](#ondatamessagereceived) fires for a Data Message that doesn't ask for a Reply, and [`onDataMessageWithReply`](#ondatamessagewithreply) fires for one that does.
+
+A string that isn't valid base64 fails with `ERR_INVALID_BASE64` before anything is sent, and its `message` says what's wrong with it. For text, `btoa` and `atob` encode and decode base64.
+
+## `sendDataMessage`
+
+```ts
+sendDataMessage(data: string): Promise<string>
+```
+
+Sends a Data Message to the Watch and waits for its Reply.
+
+The Watch app must receive it with a reply handler and call it, in [`session(_:didReceiveMessageData:replyHandler:)`](https://developer.apple.com/documentation/watchconnectivity/wcsessiondelegate/session(_:didreceivemessagedata:replyhandler:)). If it never replies, the Promise rejects with `ERR_MESSAGE_REPLY_TIMED_OUT`.
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `data` | `string` | The bytes to send, base64 encoded. |
+
+**Returns** `Promise<string>`, which resolves with the Watch's Reply, base64 encoded.
+
+**Throws** (the Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_INVALID_BASE64` | `data` isn't valid base64. Nothing was sent. |
+| `ERR_WATCH_NOT_REACHABLE` | The Watch isn't reachable. Nothing was sent. |
+| `ERR_MESSAGE_REPLY_TIMED_OUT` | The Watch didn't reply in time. |
+| `ERR_PAYLOAD_TOO_LARGE` | The data is too large to send. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+WatchConnectivity can fail with other codes too. See [Error codes](/docs/errors) for the full list.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect, { type WatchConnectErrorCode } from "rn-watch-connect";
+
+try {
+  const reply = await RnWatchConnect.sendDataMessage(btoa("Hello from iPhone!"));
+  console.log("Reply:", atob(reply));
+} catch (error) {
+  const code = (error as { code?: WatchConnectErrorCode }).code;
+  if (code === "ERR_WATCH_NOT_REACHABLE") {
+    // Try again when onReachabilityChanged says the Watch is reachable.
+  }
+}
+```
+
+## `sendDataMessageWithoutReply`
+
+```ts
+sendDataMessageWithoutReply(data: string): Promise<void>
+```
+
+Sends a Data Message to the Watch without asking for a Reply. The Watch app receives it in [`session(_:didReceiveMessageData:)`](https://developer.apple.com/documentation/watchconnectivity/wcsessiondelegate/session(_:didreceivemessagedata:)).
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `data` | `string` | The bytes to send, base64 encoded. |
+
+**Returns** `Promise<void>`, which resolves once the Data Message is handed to the Session.
+
+**Throws** (the Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_INVALID_BASE64` | `data` isn't valid base64. Nothing was sent. |
+| `ERR_WATCH_NOT_REACHABLE` | The Watch isn't reachable. Nothing was sent. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+Its error `message` starts with Expo's prefix, "Calling the 'sendDataMessageWithoutReply' function has failed", so match on `code`.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+if (RnWatchConnect.isWatchReachable) {
+  await RnWatchConnect.sendDataMessageWithoutReply(btoa("tap"));
+}
+```
+
+## `onDataMessageReceived`
+
+```ts
+onDataMessageReceived: (event: { data: string }) => void
+```
+
+Fires when an Inbound Data Message arrives that doesn't ask for a Reply.
+
+**Event**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | `string` | The bytes from the Watch, base64 encoded. |
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function DataListener() {
+  useEventListener(RnWatchConnect, "onDataMessageReceived", ({ data }) => {
+    console.log("From the Watch:", atob(data));
+  });
+  return null;
+}
+```
+
+Outside a component, use `RnWatchConnect.addListener("onDataMessageReceived", listener)`, and call `remove()` on the subscription when you're done.
+
+## `onDataMessageWithReply`
+
+```ts
+onDataMessageWithReply: (event: DataMessageWithReplyEvent) => void
+```
+
+Fires when an Inbound Data Message arrives that asks for a Reply. Answer it by calling the event's **Reply function**, `reply`.
+
+**Event**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | `string` | The bytes from the Watch, base64 encoded. |
+| `reply` | `(reply: string) => Promise<void>` | The Reply function: sends `reply` (base64 encoded) back to the Watch. |
+| `replyId` | `string` | **Deprecated.** For [`replyToDataMessage`](#replytodatamessage). Call `reply` instead. |
+
+Each Data Message takes one Reply:
+
+- If several listeners get the same Data Message, the first `reply` call wins. Later calls reject.
+- A Data Message can stop waiting for its Reply, for example when its last listener is removed. Calling `reply` after that rejects.
+
+**`reply` throws** (its Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_REPLY_NOT_PENDING` | This Data Message was already replied to, or is no longer waiting for a Reply. |
+| `ERR_INVALID_BASE64` | `reply` isn't valid base64. |
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function EchoResponder() {
+  useEventListener(RnWatchConnect, "onDataMessageWithReply", ({ data, reply }) => {
+    reply(btoa(`Got: ${atob(data)}`));
+  });
+  return null;
+}
+```
+
+## `replyToDataMessage`
+
+<Callout type="warn" title="Deprecated">
+  Call the [`reply` function](#ondatamessagewithreply) from `onDataMessageWithReply` instead.
+  `replyToDataMessage` still works, and will be removed in a future major version.
+</Callout>
+
+```ts
+replyToDataMessage(replyId: string, response: string): Promise<void>
+```
+
+Sends the Reply to an Inbound Data Message, using the `replyId` from its `onDataMessageWithReply` event.
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `replyId` | `string` | The event's `replyId`. |
+| `response` | `string` | The Reply to send, base64 encoded. |
+
+**Returns** `Promise<void>`, which resolves once the Reply is sent.
+
+**Throws** (the Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_REPLY_NOT_PENDING` | This Data Message was already replied to, or is no longer waiting for a Reply. |
+| `ERR_INVALID_BASE64` | `response` isn't valid base64. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+Its error `message` starts with Expo's prefix, "Calling the 'replyToDataMessage' function has failed", so match on `code`.
+
+**Moving to `reply`**
+
+```tsx
+// Before (deprecated)
+useEventListener(RnWatchConnect, "onDataMessageWithReply", ({ data, replyId }) => {
+  RnWatchConnect.replyToDataMessage(replyId, btoa("ok"));
+});
+
+// After
+useEventListener(RnWatchConnect, "onDataMessageWithReply", ({ data, reply }) => {
+  reply(btoa("ok"));
+});
+```
