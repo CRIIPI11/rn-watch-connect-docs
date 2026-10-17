@@ -13,11 +13,6 @@ Messages travel both ways:
 
 A Message's values must be ones WatchConnectivity can carry: strings, numbers, booleans, arrays and nested objects. Anything else fails with `ERR_PAYLOAD_UNSUPPORTED_TYPES`. To send raw bytes, use [Data Messages](/docs/data-messages).
 
-<Callout title="iOS only">
-  On other platforms, every method here fails with `ERR_UNSUPPORTED_PLATFORM`. Errors carry a stable
-  `code`: match on it, never on `message`. See [Error codes](/docs/errors).
-</Callout>
-
 ## `sendMessage`
 
 ```ts

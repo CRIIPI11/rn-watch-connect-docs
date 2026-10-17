@@ -13,11 +13,6 @@ On the JavaScript side the bytes are always a **base64 encoded string**. That ap
 
 A string that isn't valid base64 fails with `ERR_INVALID_BASE64` before anything is sent, and its `message` says what's wrong with it. For text, `btoa` and `atob` encode and decode base64.
 
-<Callout title="iOS only">
-  On other platforms, every method here fails with `ERR_UNSUPPORTED_PLATFORM`. Errors carry a stable
-  `code`: match on it, never on `message`. See [Error codes](/docs/errors).
-</Callout>
-
 ## `sendDataMessage`
 
 ```ts
