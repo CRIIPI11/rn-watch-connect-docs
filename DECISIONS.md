@@ -8,8 +8,10 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 - **Versions:** 2.x only, no versioned docs. Users on Expo SDK < 57 or iOS 15 are pointed to the 1.x README (git tag `v1.2.0`, the last 1.x release).
 - **Home page (`/`):** a custom React page holding:
   - a quick installation guide: requirements (Expo SDK 57+ / React Native 0.86+, iOS 16.4+, a companion watchOS app), the install command, "rebuild the native app; a JS reload isn't enough", and a short quick-start;
-  - a library overview. **Still open:** the user hasn't decided what it says or how it's presented. Until then, use the README "Features" list as placeholder text;
-  - two callouts: "On an older SDK or iOS 15? Use `rn-watch-connect@1.x`" (links the 1.x README) and "Upgrading from 1.x?" (links Migration).
+  - an intro saying it's a library for communicating with your companion watchOS app from your Expo and React Native app, built for Expo;
+  - a "Why rn-watch-connect" section: what sets the library apart, described on its own terms, with no comparison to other libraries named. Each point links to its page. How it's presented visually may still change with the animation work;
+  - one callout: "On an older SDK or iOS 15? Use `rn-watch-connect@1.x`" (links the 1.x README). Migration is reached from the Docs sidebar.
+  - The content column is 1024 px wide (`max-w-5xl`).
   - There is no separate Installation page.
 - **Home page animation:** a short decorative GSAP intro when the page loads. It never hides or delays the text. It's built later, after the docs.
 - **Navigation order:** home → API pages → Migration.
