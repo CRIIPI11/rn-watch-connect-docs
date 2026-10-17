@@ -1,6 +1,7 @@
 ---
 title: Messages
-description: "sendMessage, sendMessageWithoutReply, onMessageReceived, onMessageWithReply and its reply function, replyToMessage (deprecated)"
+description: "Send dictionaries to the Watch for immediate delivery, and answer the ones it sends you."
+entries: "sendMessage, sendMessageWithoutReply, onMessageReceived, onMessageWithReply and its reply function, replyToMessage (deprecated)"
 ---
 
 A **Message** is a dictionary sent over the Session for immediate delivery. It only works while the Watch is **reachable**: the Watch app is running and in range. Check [`isWatchReachable`](/docs/watch-status#iswatchreachable) before sending. To send data that waits until the Watch app can take it, use [Application Context](/docs/application-context) or [User Info](/docs/user-info) instead.
