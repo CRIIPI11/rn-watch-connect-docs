@@ -3,10 +3,238 @@ title: Messages
 description: "sendMessage, sendMessageWithoutReply, onMessageReceived, onMessageWithReply and its reply function, replyToMessage (deprecated)"
 ---
 
+A **Message** is a dictionary sent over the Session for immediate delivery. It only works while the Watch is **reachable**: the Watch app is running and in range. Check [`isWatchReachable`](/docs/watch-status#iswatchreachable) before sending. To send data that waits until the Watch app can take it, use [Application Context](/docs/application-context) or [User Info](/docs/user-info) instead.
+
+Messages travel both ways:
+
+- **Outbound** (iPhone → Watch): [`sendMessage`](#sendmessage) asks for a Reply, and [`sendMessageWithoutReply`](#sendmessagewithoutreply) doesn't.
+- **Inbound** (Watch → iPhone): [`onMessageReceived`](#onmessagereceived) fires for a Message that doesn't ask for a Reply, and [`onMessageWithReply`](#onmessagewithreply) fires for one that does.
+
+A Message's values must be ones WatchConnectivity can carry: strings, numbers, booleans, arrays and nested objects. Anything else fails with `ERR_PAYLOAD_UNSUPPORTED_TYPES`. To send raw bytes, use [Data Messages](/docs/data-messages).
+
+<Callout title="iOS only">
+  On other platforms, every method here fails with `ERR_UNSUPPORTED_PLATFORM`. Errors carry a stable
+  `code`: match on it, never on `message`. See [Error codes](/docs/errors).
+</Callout>
+
+## `sendMessage`
+
+```ts
+sendMessage<T extends MessagePayload, R extends MessagePayload>(message: T): Promise<R>
+```
+
+Sends a Message to the Watch and waits for its Reply.
+
+The Watch app must receive it with a reply handler and call it, in [`session(_:didReceiveMessage:replyHandler:)`](https://developer.apple.com/documentation/watchconnectivity/wcsessiondelegate/session(_:didreceivemessage:replyhandler:)). If it never replies, the Promise rejects with `ERR_MESSAGE_REPLY_TIMED_OUT`.
+
+**Type parameters**
+
+| Name | Description |
+| --- | --- |
+| `T` | The shape of the Message you send. |
+| `R` | The shape of the Reply you expect. The library doesn't check it at runtime. |
+
+`MessagePayload` is `Record<string, any>`.
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `message` | `T` | The Message to send. |
+
+**Returns** `Promise<R>`, which resolves with the Watch's Reply.
+
+**Throws** (the Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_WATCH_NOT_REACHABLE` | The Watch isn't reachable. Nothing was sent. |
+| `ERR_MESSAGE_REPLY_TIMED_OUT` | The Watch didn't reply in time. |
+| `ERR_PAYLOAD_UNSUPPORTED_TYPES` | The Message contains a value WatchConnectivity can't carry. |
+| `ERR_PAYLOAD_TOO_LARGE` | The Message is too large to send. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+WatchConnectivity can fail with other codes too. See [Error codes](/docs/errors) for the full list.
+
+**Example**
+
+```ts twoslash
+import RnWatchConnect, { type WatchConnectErrorCode } from "rn-watch-connect";
+
+type Ping = { ping: number };
+type Pong = { pong: number };
+
+try {
+  const reply = await RnWatchConnect.sendMessage<Ping, Pong>({ ping: 1 });
+  //    ^?
+  console.log(reply.pong);
+} catch (error) {
+  const code = (error as { code?: WatchConnectErrorCode }).code;
+  if (code === "ERR_WATCH_NOT_REACHABLE") {
+    // Try again when onReachabilityChanged says the Watch is reachable.
+  }
+}
+```
+
+## `sendMessageWithoutReply`
+
+```ts
+sendMessageWithoutReply<T extends MessagePayload>(message: T): Promise<void>
+```
+
+Sends a Message to the Watch without asking for a Reply. The Watch app receives it in [`session(_:didReceiveMessage:)`](https://developer.apple.com/documentation/watchconnectivity/wcsessiondelegate/session(_:didreceivemessage:)).
+
+**Type parameters**
+
+| Name | Description |
+| --- | --- |
+| `T` | The shape of the Message you send. |
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `message` | `T` | The Message to send. |
+
+**Returns** `Promise<void>`, which resolves once the Message is handed to the Session.
+
+**Throws** (the Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_WATCH_NOT_REACHABLE` | The Watch isn't reachable. Nothing was sent. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+Its error `message` starts with Expo's prefix, "Calling the 'sendMessageWithoutReply' function has failed", so match on `code`.
+
+**Example**
 
 ```ts twoslash
 import RnWatchConnect from "rn-watch-connect";
 
-const reply = await RnWatchConnect.sendMessage({ ping: 1 });
-//    ^?
+if (RnWatchConnect.isWatchReachable) {
+  await RnWatchConnect.sendMessageWithoutReply({ score: 42 });
+}
+```
+
+## `onMessageReceived`
+
+```ts
+onMessageReceived: (message: MessagePayload) => void
+```
+
+Fires when an Inbound Message arrives that doesn't ask for a Reply. The listener gets the Message itself.
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function ScoreListener() {
+  useEventListener(RnWatchConnect, "onMessageReceived", (message) => {
+    console.log("Score from the Watch:", message.score);
+  });
+  return null;
+}
+```
+
+Outside a component, use `addListener`, and call `remove()` on the subscription when you're done:
+
+```ts twoslash
+import RnWatchConnect from "rn-watch-connect";
+
+const subscription = RnWatchConnect.addListener("onMessageReceived", (message) => {
+  console.log(message);
+});
+
+subscription.remove();
+```
+
+## `onMessageWithReply`
+
+```ts
+onMessageWithReply: (event: MessageWithReplyEvent) => void
+```
+
+Fires when an Inbound Message arrives that asks for a Reply. Answer it by calling the event's **Reply function**, `reply`.
+
+**Event**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `message` | `MessagePayload` | The Message from the Watch. |
+| `reply` | `(reply: MessagePayload) => Promise<void>` | The Reply function: sends `reply` back to the Watch. |
+| `replyId` | `string` | **Deprecated.** For [`replyToMessage`](#replytomessage). Call `reply` instead. |
+
+Each Message takes one Reply:
+
+- If several listeners get the same Message, the first `reply` call wins. Later calls reject.
+- A Message can stop waiting for its Reply, for example when its last listener is removed. Calling `reply` after that rejects.
+
+**`reply` throws** (its Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_REPLY_NOT_PENDING` | This Message was already replied to, or is no longer waiting for a Reply. |
+
+**Example**
+
+```tsx twoslash
+import { useEventListener } from "expo";
+import RnWatchConnect from "rn-watch-connect";
+
+export function PingResponder() {
+  useEventListener(RnWatchConnect, "onMessageWithReply", ({ message, reply }) => {
+    if ("ping" in message) {
+      reply({ pong: message.ping });
+    }
+  });
+  return null;
+}
+```
+
+## `replyToMessage`
+
+<Callout type="warn" title="Deprecated">
+  Call the [`reply` function](#onmessagewithreply) from `onMessageWithReply` instead.
+  `replyToMessage` still works, and will be removed in a future major version.
+</Callout>
+
+```ts
+replyToMessage(replyId: string, reply: MessagePayload): Promise<void>
+```
+
+Sends the Reply to an Inbound Message, using the `replyId` from its `onMessageWithReply` event.
+
+**Parameters**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `replyId` | `string` | The event's `replyId`. |
+| `reply` | `MessagePayload` | The Reply to send. |
+
+**Returns** `Promise<void>`, which resolves once the Reply is sent.
+
+**Throws** (the Promise rejects with):
+
+| Code | When |
+| --- | --- |
+| `ERR_REPLY_NOT_PENDING` | This Message was already replied to, or is no longer waiting for a Reply. |
+| `ERR_UNSUPPORTED_PLATFORM` | Called on a platform other than iOS. |
+
+Its error `message` starts with Expo's prefix, "Calling the 'replyToMessage' function has failed", so match on `code`.
+
+**Moving to `reply`**
+
+```tsx
+// Before (deprecated)
+useEventListener(RnWatchConnect, "onMessageWithReply", ({ message, replyId }) => {
+  RnWatchConnect.replyToMessage(replyId, { pong: message.ping });
+});
+
+// After
+useEventListener(RnWatchConnect, "onMessageWithReply", ({ message, reply }) => {
+  reply({ pong: message.ping });
+});
 ```
