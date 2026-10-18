@@ -1,6 +1,6 @@
 import { llms, loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
-import { docsRoute } from './shared';
+import { docsRoute, siteUrl } from './shared';
 import { defineCollections, defineDocs } from 'fumadocs-mdx/macro';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
 import { z } from 'zod';
@@ -48,7 +48,7 @@ export const source = loader({
 });
 
 // The site's Markdown, rewritten for agents: plain code (no Twoslash markup), no heading anchors,
-// callouts as blockquotes, and links to the `.md` version of each page.
+// callouts as blockquotes, and absolute links, with docs pages pointing to their `.md` version.
 function toAgentMarkdown(markdown: string) {
   return markdown
     .replace(/^(```\w+)[^\n]*\btwoslash\b[^\n]*$/gm, '$1')
@@ -62,7 +62,8 @@ function toAgentMarkdown(markdown: string) {
         return lines.map((line) => (line ? `> ${line}` : '>')).join('\n');
       },
     )
-    .replace(/\]\((\/docs\/[\w-]+)(#[\w-]+)?\)/g, ']($1.md$2)');
+    .replace(/\]\((\/docs\/[\w-]+)(#[\w-]+)?\)/g, ']($1.md$2)')
+    .replace(/\]\(\//g, `](${siteUrl}/`);
 }
 
 // Drops each `##` section, or blockquote (a callout), whose heading or title is listed.
@@ -77,7 +78,7 @@ function skipSections(markdown: string, titles: string[]) {
 }
 
 export const docsLlms = llms(source, {
-  renderPage: async (page) => `# ${page.data.title} (${page.url})
+  renderPage: async (page) => `# ${page.data.title} (${siteUrl}${page.url})
 
 ${toAgentMarkdown(await page.data.getText('processed'))}`,
 });
@@ -109,7 +110,7 @@ ${skipSections(toAgentMarkdown(await home.getText('processed')), home.llmsSkip)}
 export async function llmsIndex() {
   const lines = pagesInNavOrder().map(({ separator, page }) =>
     page
-      ? `- [${page.data.title}](${page.url}.md): ${page.data.entries}`
+      ? `- [${page.data.title}](${siteUrl}${page.url}.md): ${page.data.entries}`
       : `\n## ${separator}\n`,
   );
   return `${(await homeMarkdown()).trimEnd()}\n\n${lines.join('\n').trimStart()}\n`;

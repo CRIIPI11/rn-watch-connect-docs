@@ -43,6 +43,7 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 - **Per-page Markdown:** at `/docs/<page>.md`.
 - Both files follow the sidebar order (`content/docs/meta.json`). The Markdown is rewritten for agents: Twoslash markup (the `twoslash` code-block flag, `// ^?` lines) and heading anchors are stripped, callouts become blockquotes, and links to `/docs/<page>` point to `/docs/<page>.md`.
 - Home sections and callouts written only for people are listed by title in `home.mdx`'s `llmsSkip` frontmatter and left out of both files (today: "Get started" and "Why rn-watch-connect").
+- **Absolute links:** links in `llms.txt`, `llms-full.txt` and the per-page `.md` files use the site URL (`siteUrl` in `lib/shared.ts`), so they work wherever an agent reads them.
 - Everything is generated from the pages. No hand-written copies.
 
 ## Tech

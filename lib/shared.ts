@@ -3,6 +3,9 @@ import libraryPackage from 'rn-watch-connect/package.json';
 
 export const appName = 'rn-watch-connect';
 
+// The production site. llms output uses it for absolute links; content/docs/ai-agents.mdx spells it out too.
+export const siteUrl = 'https://rn-watch-connect.vercel.app';
+
 // The documented version ("2.0"), read from the pinned dev dependency so the label can't drift.
 export const libraryVersion = libraryPackage.version.split('.').slice(0, 2).join('.');
 
