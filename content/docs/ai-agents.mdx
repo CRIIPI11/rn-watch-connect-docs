@@ -1,0 +1,51 @@
+---
+title: AI agents
+description: "Point your coding agent or AI chat at these docs, so it writes rn-watch-connect code from the real API."
+entries: "llms.txt (index), llms-full.txt (all docs in one file), per-page Markdown (/docs/<page>.md), pointing an agent at the docs from AGENTS.md or CLAUDE.md, the Copy Markdown and Open in ChatGPT / Claude / Cursor page actions"
+---
+
+These docs are also published as plain Markdown, so a coding agent or an AI chat can read them in far fewer tokens than the web pages. Give your agent one of the files below, and it writes code against the real API instead of guessing.
+
+## What's published
+
+| File | What it is | Size |
+| --- | --- | --- |
+| [`/llms.txt`](/llms.txt) | The index. The library's description, then one line per page: its Markdown link and the properties, methods and events on it. | Under 1,000 tokens |
+| [`/llms-full.txt`](/llms-full.txt) | Every page in one file, in sidebar order. | About 15,000 tokens |
+| `/docs/<page>.md` | One page as Markdown. For example [`/docs/messages.md`](/docs/messages.md). | About 500–2,500 tokens each |
+
+All three are generated from these docs, so they always match the site. The code examples in them are type-checked against `rn-watch-connect` when the site is built.
+
+**Which one to use:**
+
+- **`llms.txt`** for agents that can fetch URLs (most coding agents). They read the index, then fetch only the pages they need.
+- **`llms-full.txt`** when the agent can't fetch more pages, or when you paste the docs into a chat once.
+- **A single `.md` page** when you're working on one feature, such as [File Transfer](/docs/file-transfer).
+
+## Point your coding agent at the docs
+
+Add a short note to the instructions file your agent reads in your app's repo: `AGENTS.md`, `CLAUDE.md`, or your tool's rules file.
+
+```md title="AGENTS.md"
+## rn-watch-connect
+
+This app talks to its watchOS app with rn-watch-connect. Before writing or changing code that uses it,
+read https://rn-watch-connect.vercel.app/llms.txt and fetch the pages it links for the APIs you need.
+Match errors on `code`, never on `message`.
+```
+
+The agent now looks up the real signatures, events and Error codes, instead of relying on what it remembers. That matters most for 2.0, which changed APIs from 1.x.
+
+## Use it in a chat
+
+To ask ChatGPT, Claude or another assistant about the library:
+
+- **Paste a link:** "Read https://rn-watch-connect.vercel.app/llms-full.txt, then help me send a Message to the Watch."
+- **Paste the page:** every docs page has a **Copy Markdown** button under its title. Paste the result into the chat.
+- **Open it directly:** the **Open** menu next to Copy Markdown opens the page in ChatGPT, Claude, Cursor or Scira AI, with the page's Markdown link already in the prompt. It also has **View as Markdown**.
+
+## Tips
+
+- **Start from the index.** An agent that reads `llms.txt` first fetches only the pages it needs, which keeps its context small.
+- **Name the version.** These docs are for rn-watch-connect 2.x. If your app is still on 1.x, tell the agent, and point it at [Migrating from 1.x to 2.0](/docs/migration).
+- **Ask for error handling.** Every failure has a stable `code`. Ask the agent to handle the codes listed on each method's page. See [Error codes](/docs/errors).

@@ -1,6 +1,8 @@
 {
   "pages": [
     "installation",
+    "---AI---",
+    "ai-agents",
     "---API---",
     "watch-status",
     "messages",
