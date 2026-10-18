@@ -25,9 +25,10 @@ const homeCollection = defineCollections({
   type: 'doc',
   dir: 'content',
   files: ['home.mdx'],
-  // `llmsSkip` lists `##` sections and callouts (by title) written for people only, left out of
-  // llms.txt and llms-full.txt.
-  schema: pageSchema.extend({ llmsSkip: z.array(z.string()).default([]) }),
+  // `headline` is the big title on `/` (`title`, the library name, stays the browser tab title and the
+  // llms heading). `llmsSkip` lists `##` sections and callouts (by title) written for people only, left
+  // out of llms.txt and llms-full.txt.
+  schema: pageSchema.extend({ headline: z.string(), llmsSkip: z.array(z.string()).default([]) }),
   postprocess: {
     includeProcessedMarkdown: true,
   },

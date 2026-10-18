@@ -13,7 +13,7 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-12">
-      <h1 className="text-3xl font-bold mb-4">{home.title}</h1>
+      <h1 className="text-3xl font-bold mb-4">{home.headline}</h1>
       {/* The intro paragraph uses the same type scale as the Fumadocs homepage intro. */}
       <article className="prose [&>p:first-of-type]:text-2xl [&>p:first-of-type]:leading-snug [&>p:first-of-type]:font-light [&>p:first-of-type]:tracking-tight md:[&>p:first-of-type]:text-3xl xl:[&>p:first-of-type]:text-4xl">
         <MDX components={getMDXComponents()} />
