@@ -1,0 +1,197 @@
+'use client';
+
+import { useRef } from 'react';
+import gsap from 'gsap';
+import { MorphSVGPlugin } from 'gsap/MorphSVGPlugin';
+import { useGSAP } from '@gsap/react';
+
+gsap.registerPlugin(useGSAP, MorphSVGPlugin);
+
+const MESSAGE = 'Hello, Watch!';
+const FLIGHT = 1.3; // seconds the paper plane flies
+const HOLD = 5; // seconds the Watch shows the message before the animation replays
+
+// A rounded rectangle as path data, so MorphSVG can morph it into the other outlines.
+function roundedRect(x: number, y: number, w: number, h: number, r: number) {
+  return `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - r} A${r},${r} 0 0 1 ${x + w - r},${y + h} H${x + r} A${r},${r} 0 0 1 ${x},${y + h - r} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`;
+}
+
+// One outline morphs through three shapes, all centred on (200, 220).
+const PHONE = roundedRect(108, 20, 184, 400, 40); // about a real iPhone's 19.5:9
+const PLANE = 'M272,220 L136,174 L166,220 L136,266 Z'; // a paper plane, nose to the right
+const WATCH = roundedRect(118, 122, 164, 196, 44); // about a real Apple Watch's case
+
+// The phone types "Hello, Watch!" and taps Send Message, folds into a paper plane that flies forward in
+// place for about a second (bobbing, with a dotted trail streaming behind it), and unfolds into the Watch
+// showing the message. It holds for HOLD seconds, fades out, and replays.
+// The markup is the final frame, so readers with reduced motion (or no JS) see the message arrived.
+export function HeroAnimation() {
+  const root = useRef<SVGSVGElement>(null);
+
+  useGSAP(
+    () => {
+      const svg = root.current!;
+      const q = gsap.utils.selector(svg);
+      const body = svg.querySelector<SVGPathElement>('#body')!;
+      const typed = svg.querySelector<SVGTextElement>('#typed')!;
+      const cursor = q('#cursor');
+      const craft = q('#craft');
+      const mm = gsap.matchMedia();
+
+      mm.add(
+        { motion: '(prefers-reduced-motion: no-preference)', reduce: '(prefers-reduced-motion: reduce)' },
+        ({ conditions }) => {
+          if (conditions?.reduce) {
+            gsap.set(svg, { autoAlpha: 1 });
+            return;
+          }
+
+          // Start frame: the phone, with an empty text field.
+          const typing = { chars: 0 };
+          const flight = { progress: 0 };
+          gsap.set(craft, { svgOrigin: '200 220' });
+          gsap.set(body, { attr: { d: PHONE } });
+          gsap.set(q('#phone-ui'), { autoAlpha: 1 });
+          gsap.set([q('#watch-ui'), q('#watch-screen'), q('#fold'), q('#trail')], { autoAlpha: 0 });
+          gsap.set(q('#notification'), { autoAlpha: 0, y: 10 });
+          gsap.set(q('#placeholder'), { autoAlpha: 0 });
+          gsap.set(cursor, { autoAlpha: 1, x: 0 });
+          typed.textContent = '';
+          gsap.set(svg, { autoAlpha: 1 });
+
+          // Loops: after the message arrives, the Watch stays for HOLD seconds, fades out, and it replays.
+          const tl = gsap.timeline({ defaults: { ease: 'power2.out' }, delay: 0.3, repeat: -1, repeatDelay: 0.3 });
+
+          tl.from([body, q('#phone-ui')], { y: 16, autoAlpha: 0, duration: 0.6 })
+            .addLabel('type', '+=0.2')
+            .to(
+              typing,
+              {
+                chars: MESSAGE.length,
+                duration: 1.1,
+                ease: 'none',
+                onUpdate: () => {
+                  typed.textContent = MESSAGE.slice(0, Math.round(typing.chars));
+                  gsap.set(cursor, { x: typed.getComputedTextLength() });
+                },
+              },
+              'type',
+            )
+            .addLabel('send', '+=0.25')
+            .to(q('#send'), { scale: 0.93, duration: 0.12, yoyo: true, repeat: 1, ease: 'power1.inOut', svgOrigin: '200 246' }, 'send')
+            .to(q('#phone-ui'), { autoAlpha: 0, duration: 0.25 }, 'send+=0.3')
+            // Fold: the phone outline becomes the paper plane.
+            .addLabel('fold', '>')
+            .to(body, { morphSVG: PLANE, duration: 0.45, ease: 'power2.inOut' }, 'fold')
+            .to(q('#fold'), { autoAlpha: 1, duration: 0.2 }, 'fold+=0.3')
+            // Flight: the plane stays in place but seems to fly forward. One sine wave drives it: it climbs
+            // and dives once, its tilt follows the slope of that wave, and the tilt eases in and out of
+            // level, so there's no sharp turn. The dotted trail streams back behind it.
+            .addLabel('flight', '>')
+            .to(q('#trail'), { autoAlpha: 1, duration: 0.2 }, 'flight')
+            .to(q('#trail path'), { strokeDashoffset: 72, duration: FLIGHT, ease: 'none' }, 'flight')
+            .to(
+              flight,
+              {
+                progress: 1,
+                duration: FLIGHT,
+                ease: 'none',
+                onUpdate: () => {
+                  const wave = 2 * Math.PI * flight.progress;
+                  gsap.set(craft, {
+                    y: -8 * Math.sin(wave),
+                    rotation: -4 * Math.cos(wave) * Math.sin(Math.PI * flight.progress),
+                  });
+                },
+              },
+              'flight',
+            )
+            .to(q('#trail'), { autoAlpha: 0, duration: 0.25 }, `flight+=${FLIGHT - 0.2}`)
+            // Unfold: the plane becomes the Watch, and the message arrives.
+            .addLabel('unfold', `flight+=${FLIGHT}`)
+            .to(q('#fold'), { autoAlpha: 0, duration: 0.15 }, 'unfold')
+            .to(body, { morphSVG: WATCH, duration: 0.45, ease: 'power2.inOut' }, 'unfold')
+            .to([q('#watch-ui'), q('#watch-screen')], { autoAlpha: 1, duration: 0.3 }, 'unfold+=0.35')
+            .to(q('#notification'), { autoAlpha: 1, y: 0, duration: 0.45 }, '>-0.05')
+            // Hold, then fade the Watch out so the replay starts from an empty box.
+            .to([body, q('#watch-ui'), q('#watch-screen')], { autoAlpha: 0, duration: 0.4 }, `+=${HOLD}`);
+        },
+      );
+
+      return () => mm.revert();
+    },
+    { scope: root },
+  );
+
+  return (
+    <>
+      <svg
+        ref={root}
+        viewBox="0 0 400 440"
+        role="img"
+        aria-label="An iPhone sends “Hello, Watch!”, which flies as a paper plane and arrives on an Apple Watch."
+        className="hero-animation invisible h-auto w-full max-w-[400px] fill-none stroke-fd-foreground"
+        strokeWidth={2}
+      >
+        {/* Watch bands and crown sit behind the morphing outline. */}
+        <g id="watch-ui">
+          <rect x="146" y="56" width="108" height="72" rx="14" className="fill-fd-background" />
+          <rect x="146" y="312" width="108" height="72" rx="14" className="fill-fd-background" />
+          <rect x="280" y="170" width="11" height="34" rx="4" className="fill-fd-background" />
+          <rect x="281" y="216" width="8" height="22" rx="3" className="fill-fd-background" />
+        </g>
+
+        {/* The one outline: phone → paper plane → Watch. Its markup is the Watch (the final frame). */}
+        <g id="craft">
+          <g id="trail" className="invisible stroke-fd-muted-foreground" strokeDasharray="2 10" strokeLinecap="round">
+            <path d="M44,192 L128,192" />
+            <path d="M28,220 L158,220" />
+            <path d="M44,248 L128,248" />
+          </g>
+          <path id="body" d={WATCH} className="fill-fd-background" strokeLinejoin="round" />
+          <path id="fold" d="M166,220 L272,220" className="invisible" strokeLinecap="round" />
+        </g>
+
+        {/* Phone screen */}
+        <g id="phone-ui" className="invisible">
+          <rect x="172" y="36" width="56" height="16" rx="8" className="fill-fd-foreground" stroke="none" />
+          <rect x="126" y="174" width="148" height="42" rx="21" />
+          <text id="placeholder" x="144" y="200" className="fill-fd-muted-foreground text-[15px]" stroke="none">
+            Message
+          </text>
+          <text id="typed" x="144" y="200" className="fill-fd-foreground text-[15px]" stroke="none" />
+          <line id="cursor" x1="145" y1="185" x2="145" y2="205" className="invisible stroke-[var(--hero-accent)]" />
+          <g id="send">
+            <rect x="126" y="226" width="148" height="40" rx="20" className="fill-[var(--hero-accent)]" stroke="none" />
+            <text x="200" y="251" textAnchor="middle" className="fill-white text-[14px] font-semibold" stroke="none">
+              Send Message
+            </text>
+          </g>
+        </g>
+
+        {/* Watch screen */}
+        <g id="watch-screen">
+          <rect x="130" y="134" width="140" height="172" rx="34" className="fill-fd-muted" stroke="none" />
+          <text x="248" y="160" textAnchor="end" className="fill-fd-muted-foreground text-[12px]" stroke="none">
+            10:09
+          </text>
+          <g id="notification">
+            <circle cx="156" cy="186" r="9" className="fill-[var(--hero-accent)]" stroke="none" />
+            <text x="172" y="190" className="fill-fd-muted-foreground text-[12px]" stroke="none">
+              iPhone
+            </text>
+            <text x="148" y="232" className="fill-fd-foreground text-[22px] font-medium" stroke="none">
+              Hello,
+            </text>
+            <text x="148" y="260" className="fill-fd-foreground text-[22px] font-medium" stroke="none">
+              Watch!
+            </text>
+          </g>
+        </g>
+      </svg>
+      <noscript>
+        <style>{'.hero-animation { visibility: visible !important; }'}</style>
+      </noscript>
+    </>
+  );
+}

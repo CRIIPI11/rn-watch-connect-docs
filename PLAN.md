@@ -51,6 +51,8 @@ These pages don't depend on each other, so they can run as parallel sessions now
 
 ## 6. Home page animation
 
+> Done: see "Home page animation" in `DECISIONS.md`.
+
 - A short GSAP intro on the home page: `useGSAP` in a `"use client"` component. It never hides or delays the text.
 - Waits for the user's design. The home overview (Q12) is decided at the same time.
 
