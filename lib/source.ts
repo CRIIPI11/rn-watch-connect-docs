@@ -25,7 +25,8 @@ const homeCollection = defineCollections({
   type: 'doc',
   dir: 'content',
   files: ['home.mdx'],
-  // `llmsSkip` lists `##` sections written for people only, left out of llms.txt and llms-full.txt.
+  // `llmsSkip` lists `##` sections and callouts (by title) written for people only, left out of
+  // llms.txt and llms-full.txt.
   schema: pageSchema.extend({ llmsSkip: z.array(z.string()).default([]) }),
   postprocess: {
     includeProcessedMarkdown: true,
@@ -63,9 +64,13 @@ function toAgentMarkdown(markdown: string) {
     .replace(/\]\((\/docs\/[\w-]+)(#[\w-]+)?\)/g, ']($1.md$2)');
 }
 
-function skipSections(markdown: string, headings: string[]) {
-  return headings.reduce(
-    (text, heading) => text.replace(new RegExp(`^## ${heading}\\n[\\s\\S]*?(?=^## |(?![\\s\\S]))`, 'm'), ''),
+// Drops each `##` section, or blockquote (a callout), whose heading or title is listed.
+function skipSections(markdown: string, titles: string[]) {
+  return titles.reduce(
+    (text, title) =>
+      text
+        .replace(new RegExp(`^## ${title}\\n[\\s\\S]*?(?=^## |(?![\\s\\S]))`, 'm'), '')
+        .replace(new RegExp(`^> \\*\\*${title}\\*\\*\\n(?:>.*\\n?)*\\n?`, 'm'), ''),
     markdown,
   );
 }
@@ -96,7 +101,7 @@ async function homeMarkdown() {
   const home = getHome();
   return `# ${home.title}
 
-${skipSections(toAgentMarkdown(await home.getText('processed')), home.llmsSkip)}`;
+${skipSections(toAgentMarkdown(await home.getText('processed')), home.llmsSkip)}`.trimEnd();
 }
 
 // llms.txt: the home text, then one line per page linking to its Markdown version.
@@ -106,7 +111,7 @@ export async function llmsIndex() {
       ? `- [${page.data.title}](${page.url}.md): ${page.data.entries}`
       : `\n## ${separator}\n`,
   );
-  return `${(await homeMarkdown()).trimEnd()}\n${lines.join('\n')}\n`;
+  return `${(await homeMarkdown()).trimEnd()}\n\n${lines.join('\n').trimStart()}\n`;
 }
 
 // llms-full.txt: the home text, then every page in full, in sidebar order.

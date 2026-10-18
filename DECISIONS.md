@@ -7,14 +7,14 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 - **Scope:** the public API of `rn-watch-connect@2.x` (every property, method and event), plus the home page and the Migration page. No internals.
 - **Versions:** 2.x only, no versioned docs. Users on Expo SDK < 57 or iOS 15 are pointed to the 1.x README (git tag `v1.2.0`, the last 1.x release).
 - **Home page (`/`):** a custom React page holding:
-  - a quick installation guide: requirements (Expo SDK 57+ / React Native 0.86+, iOS 16.4+, a companion watchOS app), the install command, "rebuild the native app; a JS reload isn't enough", and a short quick-start;
   - an intro saying it's a library for communicating with your companion watchOS app from your Expo and React Native app, built for Expo;
   - a "Why rn-watch-connect" section: what sets the library apart, described on its own terms, with no comparison to other libraries named. Each point links to its page. How it's presented visually may still change with the animation work;
-  - one callout: "On an older SDK or iOS 15? Use `rn-watch-connect@1.x`" (links the 1.x README). Migration is reached from the Docs sidebar.
+  - a "Get started" callout linking to the Installation page.
   - The content column is 1024 px wide (`max-w-5xl`).
-  - There is no separate Installation page.
+  - The home page stays lean: setup lives on the Installation page.
+- **Installation page (`/docs/installation`):** first in the sidebar, above the API pages. Requirements (Expo SDK 57+ / React Native 0.86+, iOS 16.4+, a companion watchOS app, iOS only), the "On an older SDK or iOS 15? Use `rn-watch-connect@1.x`" callout (links the 1.x README), the install command, "rebuild the native app; a JS reload isn't enough", and a short quick-start.
 - **Home page animation:** a short decorative GSAP intro when the page loads. It never hides or delays the text. It's built later, after the docs.
-- **Navigation order:** home → API pages → Migration.
+- **Navigation order:** home → Installation → API pages → Migration.
 - **API pages:** one per feature, named with `GLOSSARY.md` terms, one heading (anchor) per entry:
 
   | Page | Slug | Entries |
@@ -28,19 +28,19 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
   | Error codes | `/docs/errors` | `WatchConnectErrorCode`: the "match on `code`" rule, Expo's message prefix, the full code table |
   | Migrating from 1.x to 2.0 | `/docs/migration` | Steps for app code, from the CHANGELOG "2.0.0" section |
 
-  `/docs` on its own redirects to `/docs/watch-status`.
+  `/docs` on its own redirects to `/docs/installation`.
 - **Each entry:** signature, parameters, what it returns or sends, what it throws (each code links to Error codes), and a short example. Types appear inline on the entries that use them; there is no Types page. The deprecated reply methods stay on their feature's page, marked deprecated, after the `reply` function that replaces them.
 - **No "iOS only" callout on API pages.** The library is iOS only, which is obvious from what it does, so it's said once, on the home page. `ERR_UNSUPPORTED_PLATFORM` still appears in each entry's Throws table.
 
 ## AI-facing output
 
 - **Single source for the home text:** `content/home.mdx`. The home page renders it, and the `llms` routes put it at the top of both files.
-- **`/llms.txt`:** the home text (including the key rules: iOS only, match on `code`, rebuild after install), then one line per page. Each line uses the page's frontmatter `entries` field, which names every entry on it, e.g. `- [File Transfer](…/docs/file-transfer.md): transferFile, cancelFileTransfer, …`. The build fails if a page has no `entries`.
+- **`/llms.txt`:** the home text, then one line per page, with Installation first (it carries the key rules: iOS only, rebuild after install, match on `code`). Each line uses the page's frontmatter `entries` field, which names every entry on it, e.g. `- [File Transfer](…/docs/file-transfer.md): transferFile, cancelFileTransfer, …`. The build fails if a page has no `entries`.
 - **Page subtitles:** the frontmatter `description` is a short sentence for people. It's shown under the page title and used as the HTML meta description, but not in `llms.txt`.
 - **`/llms-full.txt`:** the home text, then every page in full, Migration last.
 - **Per-page Markdown:** at `/docs/<page>.md`.
 - Both files follow the sidebar order (`content/docs/meta.json`). The Markdown is rewritten for agents: Twoslash markup (the `twoslash` code-block flag, `// ^?` lines) and heading anchors are stripped, callouts become blockquotes, and links to `/docs/<page>` point to `/docs/<page>.md`.
-- Home sections written only for people are listed in `home.mdx`'s `llmsSkip` frontmatter and left out of both files (today: "Why rn-watch-connect").
+- Home sections and callouts written only for people are listed by title in `home.mdx`'s `llmsSkip` frontmatter and left out of both files (today: "Get started" and "Why rn-watch-connect").
 - Everything is generated from the pages. No hand-written copies.
 
 ## Tech
