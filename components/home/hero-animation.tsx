@@ -8,6 +8,7 @@ import { useGSAP } from '@gsap/react';
 gsap.registerPlugin(useGSAP, MorphSVGPlugin);
 
 const MESSAGE = 'Hello, Watch!';
+const FLIGHT = 1.3; // seconds the paper plane flies
 
 // A rounded rectangle as path data, so MorphSVG can morph it into the other outlines.
 function roundedRect(x: number, y: number, w: number, h: number, r: number) {
@@ -16,7 +17,7 @@ function roundedRect(x: number, y: number, w: number, h: number, r: number) {
 
 // One outline morphs through three shapes, all centred on (200, 220).
 const PHONE = roundedRect(108, 20, 184, 400, 40); // about a real iPhone's 19.5:9
-const PLANE = 'M290,220 L120,162 L158,220 L120,278 Z'; // a paper plane, nose to the right
+const PLANE = 'M272,220 L136,174 L166,220 L136,266 Z'; // a paper plane, nose to the right
 const WATCH = roundedRect(118, 122, 164, 196, 44); // about a real Apple Watch's case
 
 // The phone types "Hello, Watch!" and taps Send Message, folds into a paper plane that flies forward in
@@ -32,6 +33,7 @@ export function HeroAnimation() {
       const body = svg.querySelector<SVGPathElement>('#body')!;
       const typed = svg.querySelector<SVGTextElement>('#typed')!;
       const cursor = q('#cursor');
+      const craft = q('#craft');
       const mm = gsap.matchMedia();
 
       mm.add(
@@ -44,6 +46,8 @@ export function HeroAnimation() {
 
           // Start frame: the phone, with an empty text field.
           const typing = { chars: 0 };
+          const flight = { progress: 0 };
+          gsap.set(craft, { svgOrigin: '200 220' });
           gsap.set(body, { attr: { d: PHONE } });
           gsap.set(q('#phone-ui'), { autoAlpha: 1 });
           gsap.set([q('#watch-ui'), q('#watch-screen'), q('#fold'), q('#trail')], { autoAlpha: 0 });
@@ -77,27 +81,31 @@ export function HeroAnimation() {
             .addLabel('fold', '>')
             .to(body, { morphSVG: PLANE, duration: 0.45, ease: 'power2.inOut' }, 'fold')
             .to(q('#fold'), { autoAlpha: 1, duration: 0.2 }, 'fold+=0.3')
-            // Flight: the plane stays in place but seems to fly forward: it bobs and tilts while the
-            // dotted trail streams back behind it.
+            // Flight: the plane stays in place but seems to fly forward. One sine wave drives it: it climbs
+            // and dives once, its tilt follows the slope of that wave, and the tilt eases in and out of
+            // level, so there's no sharp turn. The dotted trail streams back behind it.
             .addLabel('flight', '>')
             .to(q('#trail'), { autoAlpha: 1, duration: 0.2 }, 'flight')
-            .to(q('#trail path'), { strokeDashoffset: 60, duration: 1.2, ease: 'none' }, 'flight')
+            .to(q('#trail path'), { strokeDashoffset: 72, duration: FLIGHT, ease: 'none' }, 'flight')
             .to(
-              q('#craft'),
+              flight,
               {
-                keyframes: [
-                  { y: -10, rotation: -7, duration: 0.35 },
-                  { y: 8, rotation: 5, duration: 0.45 },
-                  { y: 0, rotation: 0, duration: 0.3 },
-                ],
-                ease: 'sine.inOut',
-                svgOrigin: '200 220',
+                progress: 1,
+                duration: FLIGHT,
+                ease: 'none',
+                onUpdate: () => {
+                  const wave = 2 * Math.PI * flight.progress;
+                  gsap.set(craft, {
+                    y: -8 * Math.sin(wave),
+                    rotation: -4 * Math.cos(wave) * Math.sin(Math.PI * flight.progress),
+                  });
+                },
               },
               'flight',
             )
-            .to(q('#trail'), { autoAlpha: 0, duration: 0.25 }, 'flight+=0.95')
+            .to(q('#trail'), { autoAlpha: 0, duration: 0.25 }, `flight+=${FLIGHT - 0.2}`)
             // Unfold: the plane becomes the Watch, and the message arrives.
-            .addLabel('unfold', 'flight+=1.1')
+            .addLabel('unfold', `flight+=${FLIGHT}`)
             .to(q('#fold'), { autoAlpha: 0, duration: 0.15 }, 'unfold')
             .to(body, { morphSVG: WATCH, duration: 0.45, ease: 'power2.inOut' }, 'unfold')
             .to([q('#watch-ui'), q('#watch-screen')], { autoAlpha: 1, duration: 0.3 }, 'unfold+=0.35')
@@ -131,12 +139,12 @@ export function HeroAnimation() {
         {/* The one outline: phone → paper plane → Watch. Its markup is the Watch (the final frame). */}
         <g id="craft">
           <g id="trail" className="invisible stroke-fd-muted-foreground" strokeDasharray="2 10" strokeLinecap="round">
-            <path d="M24,186 L112,186" />
-            <path d="M8,220 L150,220" />
-            <path d="M24,254 L112,254" />
+            <path d="M44,192 L128,192" />
+            <path d="M28,220 L158,220" />
+            <path d="M44,248 L128,248" />
           </g>
           <path id="body" d={WATCH} className="fill-fd-background" strokeLinejoin="round" />
-          <path id="fold" d="M158,220 L290,220" className="invisible" strokeLinecap="round" />
+          <path id="fold" d="M166,220 L272,220" className="invisible" strokeLinecap="round" />
         </g>
 
         {/* Phone screen */}
