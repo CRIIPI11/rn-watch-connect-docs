@@ -9,11 +9,29 @@ rn-watch-connect is a library for communicating with your companion watchOS app 
 
 ## Why rn-watch-connect
 
-- **Built for Expo.** Written with the Expo Modules API for Expo SDK 57. Listen to events with Expo's own `useEvent` and `useEventListener`. See [Watch status](/docs/watch-status).
-- **Promise-based.** `await sendMessage(...)` resolves with the Watch's Reply, and rejects when it fails. See [Messages](/docs/messages).
-- **Reply in one call.** An incoming Message that asks for a Reply comes with its own `reply()` function, and the first reply wins. See [`onMessageWithReply`](/docs/messages#onmessagewithreply).
-- **Errors you can switch on.** Every failure has a stable `code`, such as `ERR_WATCH_NOT_REACHABLE`, typed as `WatchConnectErrorCode`, including WatchConnectivity's own errors. See [Error codes](/docs/errors).
-- **Transfers with a clear ending.** Each [User Info](/docs/user-info) and [File Transfer](/docs/file-transfer) gets exactly one finish event: delivered, failed or cancelled. Both can be listed and cancelled.
-- **Received files handled safely.** Files from the Watch land in your temporary directory, never overwrite each other, and a file that couldn't be kept is reported instead of lost silently. See [`onFileReceived`](/docs/file-transfer#onfilereceived).
-- **Status you can read right away.** `isWatchReachable`, `isWatchPaired` and the other status values are plain properties, and their events fire only on a real change. See [Watch status](/docs/watch-status).
-- **Docs made for AI agents.** Point your coding agent at [`/llms.txt`](/llms.txt), a short index of every page, or [`/llms-full.txt`](/llms-full.txt) for all the docs in one file. Every page also has a plain Markdown version, and each code example is type-checked against the library, so the code an agent copies matches the real types.
+<WhyGrid>
+  <WhyCard title="Docs made for AI agents" color="teal" span={6} href="/llms.txt" linkText="Read llms.txt">
+    Point your coding agent at [`/llms.txt`](/llms.txt), a short index of every page, or [`/llms-full.txt`](/llms-full.txt) for all the docs in one file. Every page also has a plain Markdown version, and each code example is type-checked against the library, so the code an agent copies matches the real types.
+  </WhyCard>
+  <WhyCard title="Built for Expo" color="blue" span={4} href="/docs/watch-status" linkText="Watch status">
+    Written with the Expo Modules API for Expo SDK 57. Listen to events with Expo's own `useEvent` and `useEventListener`.
+  </WhyCard>
+  <WhyCard title="Promise-based" color="violet" span={2} href="/docs/messages" linkText="Messages">
+    `await sendMessage(...)` resolves with the Watch's Reply, and rejects when it fails.
+  </WhyCard>
+  <WhyCard title="Reply in one call" color="cyan" span={2} href="/docs/messages#onmessagewithreply" linkText="onMessageWithReply">
+    An incoming Message that asks for a Reply comes with its own `reply()` function, and the first reply wins.
+  </WhyCard>
+  <WhyCard title="Errors you can switch on" color="amber" span={4} href="/docs/errors" linkText="Error codes">
+    Every failure has a stable `code`, such as `ERR_WATCH_NOT_REACHABLE`, typed as `WatchConnectErrorCode`, including WatchConnectivity's own errors.
+  </WhyCard>
+  <WhyCard title="Transfers with a clear ending" color="emerald" span={2} href="/docs/file-transfer#onfiletransferfinished" linkText="Finish events">
+    Each User Info and File Transfer gets exactly one finish event: delivered, failed or cancelled. Both can be listed and cancelled.
+  </WhyCard>
+  <WhyCard title="Received files handled safely" color="pink" span={2} href="/docs/file-transfer#onfilereceived" linkText="onFileReceived">
+    Files from the Watch land in your temporary directory, never overwrite each other, and a file that couldn't be kept is reported instead of lost silently.
+  </WhyCard>
+  <WhyCard title="Status you can read right away" color="indigo" span={2} href="/docs/watch-status" linkText="Watch status">
+    `isWatchReachable`, `isWatchPaired` and the other status values are plain properties, and their events fire only on a real change.
+  </WhyCard>
+</WhyGrid>
