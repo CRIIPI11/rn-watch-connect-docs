@@ -59,6 +59,7 @@ These pages don't depend on each other, so they can run as parallel sessions now
 ## 7. Deploy (last)
 
 - **Needs go-ahead:** create the Vercel project (Hobby) linked to the GitHub repo, and claim `rn-watch-connect.vercel.app`. If that name is taken, bring alternatives to the user, since the URL is permanent.
+- If the site URL isn't `rn-watch-connect.vercel.app`, update it in `content/docs/ai-agents.mdx` (the AGENTS.md snippet and the chat example).
 - Make the links in `llms.txt`, `llms-full.txt` and `/docs/*.md` absolute, using the site URL (`toAgentMarkdown` and `llmsIndex` in `lib/source.ts`).
 - Check the deployed `/`, every `/docs` page, `/llms.txt`, `/llms-full.txt` and a `/docs/<page>.md`.
 - **Done when:** `master` deploys to production, and a PR gets a preview URL.
