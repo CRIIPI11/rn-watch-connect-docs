@@ -18,3 +18,8 @@ html > body[data-scroll-locked] {
 .prose :is(h1, h2, h3, h4) {
   overflow-wrap: anywhere;
 }
+
+/* The home page's one accent colour: the Get started button and the animation's plane and button. */
+:root {
+  --hero-accent: #0a84ff;
+}

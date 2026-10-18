@@ -10,11 +10,10 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
   - a headline, "Talk to your watchOS app directly from Expo" (frontmatter `headline`; the library name stays the tab title and the llms heading);
   - an intro saying it's a library for communicating with your companion watchOS app from your Expo and React Native app, built for Expo;
   - a "Why rn-watch-connect" section: what sets the library apart, described on its own terms, with no comparison to other libraries named. Each point links to its page. How it's presented visually may still change with the animation work;
-  - a "Get started" callout linking to the Installation page.
   - The content column is 1024 px wide (`max-w-5xl`).
   - The home page stays lean: setup lives on the Installation page.
 - **Installation page (`/docs/installation`):** first in the sidebar, above the API pages. Requirements (Expo SDK 57+ / React Native 0.86+, iOS 16.4+, a companion watchOS app, iOS only), the "On an older SDK or iOS 15? Use `rn-watch-connect@1.x`" callout (links the 1.x README), the install command, "rebuild the native app; a JS reload isn't enough", and a short quick-start.
-- **Home page animation:** a short decorative GSAP intro when the page loads. It never hides or delays the text. It's built later, after the docs.
+- **Home page animation:** a Fumadocs-style box at the top of `/` (`components/home/hero.tsx`): the headline with **Get started** (→ Installation) and **GitHub** buttons on the left, and on the right one inline SVG animated by one GSAP timeline (`components/home/hero-animation.tsx`). A phone types "Hello, Watch!" and presses **Send Message**, a paper plane flies along a curve (MotionPathPlugin) to a Watch, and the Watch shows the message. It plays once, in line art with one accent colour (`--hero-accent`, iOS blue). The SVG's markup is the final frame, so reduced motion and no-JS show the message already arrived.
 - **Navigation order:** home → Installation → API pages → Migration.
 - **API pages:** one per feature, named with `GLOSSARY.md` terms, one heading (anchor) per entry:
 
