@@ -7,7 +7,7 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 - **Scope:** the public API of `rn-watch-connect@2.x` (every property, method and event), plus the home page and the Migration page. No internals.
 - **Versions:** 2.x only, no versioned docs. Users on Expo SDK < 57 or iOS 15 are pointed to the 1.x README (git tag `v1.2.0`, the last 1.x release).
 - **Home page (`/`):** a custom React page holding:
-  - a headline, "Talk to your watchOS app directly from Expo" (frontmatter `headline`; the library name stays the tab title and the llms heading);
+  - a headline, "Talk to your watchOS app directly from Expo" followed by the Expo logo in the text colour (frontmatter `headline`; the library name stays the tab title and the llms heading);
   - an intro saying it's a library for communicating with your companion watchOS app from your Expo and React Native app, built for Expo;
   - a "Why rn-watch-connect" section: what sets the library apart, described on its own terms, with no comparison to other libraries named. Each point links to its page. How it's presented visually may still change with the animation work;
   - The text below the box is 1024 px wide (`max-w-5xl`). The box is wider, up to 1280 px (`max-w-7xl`), with the headline taking 3/5 of it on large screens so it fits on two lines.
