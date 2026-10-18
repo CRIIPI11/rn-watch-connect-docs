@@ -9,6 +9,7 @@ gsap.registerPlugin(useGSAP, MorphSVGPlugin);
 
 const MESSAGE = 'Hello, Watch!';
 const FLIGHT = 1.3; // seconds the paper plane flies
+const HOLD = 5; // seconds the Watch shows the message before the animation replays
 
 // A rounded rectangle as path data, so MorphSVG can morph it into the other outlines.
 function roundedRect(x: number, y: number, w: number, h: number, r: number) {
@@ -21,7 +22,8 @@ const PLANE = 'M272,220 L136,174 L166,220 L136,266 Z'; // a paper plane, nose to
 const WATCH = roundedRect(118, 122, 164, 196, 44); // about a real Apple Watch's case
 
 // The phone types "Hello, Watch!" and taps Send Message, folds into a paper plane that flies forward in
-// place for about a second (bobbing, with a dotted trail streaming behind it), and unfolds into the Watch showing the message. Plays once.
+// place for about a second (bobbing, with a dotted trail streaming behind it), and unfolds into the Watch
+// showing the message. It holds for HOLD seconds, fades out, and replays.
 // The markup is the final frame, so readers with reduced motion (or no JS) see the message arrived.
 export function HeroAnimation() {
   const root = useRef<SVGSVGElement>(null);
@@ -57,7 +59,8 @@ export function HeroAnimation() {
           typed.textContent = '';
           gsap.set(svg, { autoAlpha: 1 });
 
-          const tl = gsap.timeline({ defaults: { ease: 'power2.out' }, delay: 0.3 });
+          // Loops: after the message arrives, the Watch stays for HOLD seconds, fades out, and it replays.
+          const tl = gsap.timeline({ defaults: { ease: 'power2.out' }, delay: 0.3, repeat: -1, repeatDelay: 0.3 });
 
           tl.from([body, q('#phone-ui')], { y: 16, autoAlpha: 0, duration: 0.6 })
             .addLabel('type', '+=0.2')
@@ -109,7 +112,9 @@ export function HeroAnimation() {
             .to(q('#fold'), { autoAlpha: 0, duration: 0.15 }, 'unfold')
             .to(body, { morphSVG: WATCH, duration: 0.45, ease: 'power2.inOut' }, 'unfold')
             .to([q('#watch-ui'), q('#watch-screen')], { autoAlpha: 1, duration: 0.3 }, 'unfold+=0.35')
-            .to(q('#notification'), { autoAlpha: 1, y: 0, duration: 0.45 }, '>-0.05');
+            .to(q('#notification'), { autoAlpha: 1, y: 0, duration: 0.45 }, '>-0.05')
+            // Hold, then fade the Watch out so the replay starts from an empty box.
+            .to([body, q('#watch-ui'), q('#watch-screen')], { autoAlpha: 0, duration: 0.4 }, `+=${HOLD}`);
         },
       );
 
