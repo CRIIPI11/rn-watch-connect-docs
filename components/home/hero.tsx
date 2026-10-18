@@ -1,12 +1,17 @@
 import Link from 'next/link';
 import { libraryRepoUrl } from '@/lib/shared';
 import { HeroAnimation } from './hero-animation';
+import { HeroBackground } from './hero-background';
 
 // The home page's top box, laid out like the Fumadocs homepage: title and buttons on the left,
-// the phone-to-Watch animation on the right. Stacks on narrow screens.
+// the phone-to-Watch animation on the right, over a drifting-blob and dot-grid background. Stacks on
+// narrow screens.
 export function Hero({ headline }: { headline: string }) {
   return (
-    <section className="mb-12 flex flex-col overflow-hidden rounded-2xl border md:min-h-[600px] md:flex-row">
+    <section className="relative isolate mb-12 flex flex-col overflow-hidden rounded-2xl border md:min-h-[600px] md:flex-row">
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <HeroBackground />
+      </div>
       <div className="flex flex-col gap-8 p-6 md:w-1/2 md:p-12 lg:w-3/5">
         <h1 className="text-4xl leading-tight font-medium xl:text-5xl">{headline}</h1>
         <div className="flex flex-wrap gap-3">

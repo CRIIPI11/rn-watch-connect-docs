@@ -23,3 +23,43 @@ html > body[data-scroll-locked] {
 :root {
   --hero-accent: #0a84ff;
 }
+
+/* Hero background (components/home/hero-background.tsx): drifting blobs under a fading dot grid. */
+.hero-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.hero-dots {
+  background-image: radial-gradient(var(--color-fd-muted-foreground) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse at 60% 50%, black 30%, transparent 75%);
+}
+
+@keyframes hero-drift-a {
+  50% {
+    transform: translate(-80px, 60px);
+  }
+}
+
+@keyframes hero-drift-b {
+  50% {
+    transform: translate(90px, -50px);
+  }
+}
+
+@keyframes hero-drift-c {
+  50% {
+    transform: translate(-40px, -70px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-blob {
+    animation: none;
+  }
+}
