@@ -52,7 +52,7 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 - **Animation:** GSAP with `@gsap/react` (`useGSAP`), in a `"use client"` component.
 - **Example checking:** Twoslash type-checks every TypeScript example during the build. `rn-watch-connect` is pinned as a dev dependency (`2.0.0`).
 - **Version label:** the header says "Docs for rn-watch-connect 2.0", read from that dev dependency.
-- **No analytics.**
+- **Analytics:** Vercel Web Analytics (`<Analytics />` from `@vercel/analytics/next` in `app/layout.tsx`), enabled on the project. It counts visitors and page views per page. Custom click events (`track()`) need a Pro plan, and the project is on Hobby, so they aren't used.
 
 ## Hosting and repo
 
