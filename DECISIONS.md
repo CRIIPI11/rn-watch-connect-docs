@@ -65,8 +65,8 @@ Settled with the user on 2026-10-17, from the open questions in `HANDOFF.md`. So
 
 ## Follow-ups in the library repo
 
-These go through the library's own flow (issue → branch → PR into `master`), after the site is live:
+These go through the library's own flow (issue → branch → PR into `master`), after the site is live. Tracked in CRIIPI11/rn-watch-connect#23, PR CRIIPI11/rn-watch-connect#24:
 
 - Shrink the README to: intro, Requirements, Installation, a short quick-start and a "Full docs →" link. Drop the API, Errors and Types sections.
 - Set `package.json` `homepage` to the site URL.
-- Add an "update the docs site" item to the release checklist.
+- No release-checklist item: the library has no release checklist, and the user chose not to add one.

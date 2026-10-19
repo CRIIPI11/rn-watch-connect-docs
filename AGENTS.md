@@ -14,7 +14,7 @@ The documentation site for the `rn-watch-connect` library (Fumadocs on Next.js 1
 
 | What | Path |
 |---|---|
-| API, events, Error codes, types | `README.md` |
+| API, events, Error codes, types | `src/RnWatchConnect.types.ts` and this site's own pages (the library README is now short and points here) |
 | What changed in 2.0.0 (for the Migration page) | `CHANGELOG.md` |
 | Domain words, and words to avoid | `GLOSSARY.md` |
 | The exact public TypeScript surface | `src/RnWatchConnect.types.ts` |
