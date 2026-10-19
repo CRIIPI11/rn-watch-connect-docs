@@ -68,6 +68,6 @@ These pages don't depend on each other, so they can run as parallel sessions now
 
 ## 8. Library follow-ups (in the library repo, after deploy)
 
-> In progress: issue CRIIPI11/rn-watch-connect#23, PR CRIIPI11/rn-watch-connect#24.
+> Done: README and homepage in CRIIPI11/rn-watch-connect#24 (issue #23, closed), released as 2.0.1 in CRIIPI11/rn-watch-connect#25.
 
 - Shrink the README and set `homepage` to the site URL. One issue → branch → PR into the library's `master`. (No release-checklist item: the library has none, and the user chose not to add one.)
